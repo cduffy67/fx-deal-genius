@@ -1,26 +1,147 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import { DealForm, type FormValues } from "@/components/fx/DealForm";
+import { DealSummary } from "@/components/fx/DealSummary";
+import { DashboardCards } from "@/components/fx/DashboardCards";
+import { RecentRequestsTable } from "@/components/fx/RecentRequestsTable";
+import { ArchitectureNotes } from "@/components/fx/ArchitectureNotes";
+import { fetchRate } from "@/lib/fx";
+import { loadDeals, saveDeals, type Deal } from "@/lib/storage";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "FX Deal Desk Assistant" },
+      {
+        name: "description",
+        content:
+          "Prototype FX deal desk assistant for banking sales: capture requests, fetch live ECB rates and generate customer-ready deal summaries.",
+      },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function Index() {
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [active, setActive] = useState<Deal | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const stored = loadDeals();
+    setDeals(stored);
+    if (stored[0]) setActive(stored[0]);
+  }, []);
+
+  function persist(next: Deal[]) {
+    setDeals(next);
+    saveDeals(next);
+  }
+
+  async function handleSubmit(v: FormValues) {
+    setLoading(true);
+    const amount = Number(v.amount);
+    const r = await fetchRate(v.baseCcy, v.targetCcy);
+    const deal: Deal = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      customerName: v.customerName.trim(),
+      customerIndustry: v.customerIndustry,
+      baseCcy: v.baseCcy,
+      targetCcy: v.targetCcy,
+      amount,
+      purpose: v.purpose.trim(),
+      urgency: v.urgency,
+      relationshipValue: v.relationshipValue,
+      notes: v.notes.trim(),
+      rate: r.rate,
+      convertedAmount: amount * r.rate,
+      rateFetchedAt: r.fetchedAt,
+      rateSource: r.source,
+    };
+    persist([deal, ...deals]);
+    setActive(deal);
+    setLoading(false);
+    if (r.source === "frankfurter")
+      toast.success("Live FX rate retrieved", { description: `${v.baseCcy}/${v.targetCcy} @ ${r.rate.toFixed(4)}` });
+    else if (r.source === "demo-fallback")
+      toast.warning("Live FX unavailable — using demo fallback rate");
+    else toast.message("Same currency — rate set to 1.0000");
+  }
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary font-mono text-xs font-bold text-primary-foreground">
+              FX
+            </div>
+            <div>
+              <h1 className="text-base font-semibold tracking-tight text-foreground">
+                FX Deal Desk Assistant
+              </h1>
+              <p className="text-[11px] text-muted-foreground">
+                Sales enablement · live ECB reference rates
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider">
+            Prototype · Demo
+          </Badge>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        <DashboardCards deals={deals} />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+          <div className="rounded-md border border-border bg-card p-6">
+            <div className="mb-5">
+              <h2 className="text-sm font-semibold text-foreground">New FX request</h2>
+              <p className="text-xs text-muted-foreground">
+                Capture the request — rate is fetched on submit.
+              </p>
+            </div>
+            <DealForm onSubmit={handleSubmit} loading={loading} />
+          </div>
+
+          <DealSummary deal={active} />
+        </div>
+
+        <RecentRequestsTable
+          deals={deals}
+          onSelect={setActive}
+          onDelete={(id) => {
+            const next = deals.filter((d) => d.id !== id);
+            persist(next);
+            if (active?.id === id) setActive(next[0] ?? null);
+          }}
+          onClear={() => {
+            persist([]);
+            setActive(null);
+          }}
+        />
+
+        <ArchitectureNotes />
+
+        <footer className="pt-4 pb-2 text-center text-[11px] text-muted-foreground">
+          Prototype only · Not for production trading · Rates via{" "}
+          <a
+            href="https://frankfurter.dev"
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-foreground"
+          >
+            frankfurter.dev
+          </a>
+        </footer>
+      </main>
+
+      <Toaster richColors position="top-right" />
     </div>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
