@@ -1,11 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { RateBadge } from "./RateBadge";
 import { StatusBadge } from "./StatusBadge";
 import { formatCurrency, formatRate } from "@/lib/fx";
 import type { Deal } from "@/lib/storage";
 import { analyseDeal } from "@/lib/deal-analysis";
-import { FileText, ArrowRight } from "lucide-react";
+import { buildDealPackText, downloadDealPackPdf } from "@/lib/deal-export";
+import { FileText, ArrowRight, Copy, Download } from "lucide-react";
+import { toast } from "sonner";
 
 function fmtTime(iso: string) {
   return (
