@@ -26,16 +26,19 @@ export function PolicySource() {
             <h3 className="mt-0.5 text-sm font-semibold text-foreground">
               {POLICY_SOURCE_LABEL}
             </h3>
-            <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
-              Static demo governance document used to cross-check each FX request. In a production
-              deployment this would be sourced from the customer's policy repository — for example
-              SharePoint, Google Drive, Confluence or an internal compliance knowledge base — and
-              kept in sync via a controlled ingestion pipeline.
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Owner: {POLICY_DOC_OWNER}
+            </p>
+            <p className="mt-2 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+              This demo uses a static Norton Bank FX Governance Pack to mimic a customer knowledge
+              source such as SharePoint, Google Drive, Confluence, or an internal policy
+              repository. In production, the app would need source retrieval, permissions,
+              auditability and source traceability.
             </p>
           </div>
         </div>
         <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider">
-          Demo static doc
+          {POLICY_DOC_VERSION} · Static doc
         </Badge>
       </div>
 
