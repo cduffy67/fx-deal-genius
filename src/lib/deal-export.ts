@@ -1,0 +1,227 @@
+import { jsPDF } from "jspdf";
+import { formatCurrency, formatRate } from "./fx";
+import type { Deal } from "./storage";
+import { analyseDeal } from "./deal-analysis";
+
+function fmtTime(iso: string) {
+  return (
+    new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    }).format(new Date(iso)) + " UTC"
+  );
+}
+
+function rateLabel(deal: Deal) {
+  return deal.rateSource === "frankfurter"
+    ? "Live (ECB / Frankfurter)"
+    : deal.rateSource === "demo-fallback"
+      ? "Demo fallback — not executable"
+      : "Identity (same currency)";
+}
+
+export function buildDealPackText(deal: Deal): string {
+  const a = analyseDeal(deal);
+  const pair = `${deal.baseCcy}/${deal.targetCcy}`;
+  const L: string[] = [];
+  L.push("FX DEAL DECISION PACK");
+  L.push("=".repeat(60));
+  L.push(`Customer:   ${deal.customerName}`);
+  L.push(`Industry:   ${deal.customerIndustry || "—"}`);
+  L.push(`Pair:       ${pair}`);
+  L.push(`Status:     ${a.status}`);
+  L.push("");
+  L.push("1. DEAL SUMMARY");
+  L.push("-".repeat(60));
+  L.push(`Amount (sell):           ${formatCurrency(deal.amount, deal.baseCcy)}`);
+  L.push(`FX rate used:            ${formatRate(deal.rate)}`);
+  L.push(`Converted amount (buy):  ${formatCurrency(deal.convertedAmount, deal.targetCcy)}`);
+  L.push(`Rate checked:            ${fmtTime(deal.rateFetchedAt)}`);
+  L.push(`Rate source:             ${rateLabel(deal)}`);
+  L.push(`Purpose:                 ${deal.purpose || "—"}`);
+  L.push(`Urgency:                 ${deal.urgency}`);
+  L.push(`Relationship tier:       ${deal.relationshipValue}`);
+  L.push("");
+  L.push("2. RELATIONSHIP & BUSINESS VALUE");
+  L.push("-".repeat(60));
+  L.push(a.summary);
+  L.push("");
+  a.businessValue.forEach((b) => L.push(`• ${b}`));
+  L.push("");
+  L.push("3. RISK CONSIDERATIONS");
+  L.push("-".repeat(60));
+  a.risks.forEach((r) => L.push(`• ${r}`));
+  L.push("");
+  L.push("4. RECOMMENDED NEXT STEP");
+  L.push("-".repeat(60));
+  L.push(`→ ${a.nextStep}`);
+  L.push("");
+  L.push("5. CUSTOMER QUESTIONS TO VALIDATE");
+  L.push("-".repeat(60));
+  a.questions.forEach((q, i) => L.push(`${i + 1}. ${q}`));
+  if (deal.notes.trim()) {
+    L.push("");
+    L.push("INTERNAL NOTES");
+    L.push("-".repeat(60));
+    L.push(deal.notes);
+  }
+  L.push("");
+  L.push("-".repeat(60));
+  L.push("Prototype only · Not for production trading · Rates via frankfurter.dev");
+  return L.join("\n");
+}
+
+export function downloadDealPackPdf(deal: Deal) {
+  const a = analyseDeal(deal);
+  const pair = `${deal.baseCcy}/${deal.targetCcy}`;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 48;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  function ensureSpace(h: number) {
+    if (y + h > pageH - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  }
+
+  function text(t: string, opts: { size?: number; bold?: boolean; color?: [number, number, number]; indent?: number } = {}) {
+    const size = opts.size ?? 10;
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    doc.setFontSize(size);
+    doc.setTextColor(...(opts.color ?? [30, 30, 40]));
+    const lines = doc.splitTextToSize(t, contentW - (opts.indent ?? 0));
+    const lh = size * 1.35;
+    for (const line of lines) {
+      ensureSpace(lh);
+      doc.text(line, margin + (opts.indent ?? 0), y);
+      y += lh;
+    }
+  }
+
+  function rule() {
+    ensureSpace(8);
+    doc.setDrawColor(220, 220, 225);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageW - margin, y);
+    y += 10;
+  }
+
+  function section(idx: number, title: string) {
+    y += 6;
+    ensureSpace(20);
+    text(`${idx}.  ${title.toUpperCase()}`, { size: 10, bold: true, color: [40, 50, 90] });
+    rule();
+  }
+
+  function kv(label: string, value: string) {
+    const size = 10;
+    const lh = size * 1.4;
+    ensureSpace(lh);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(size);
+    doc.setTextColor(110, 110, 120);
+    doc.text(label, margin, y);
+    doc.setTextColor(20, 20, 30);
+    doc.setFont("helvetica", "bold");
+    doc.text(value, margin + 170, y);
+    y += lh;
+  }
+
+  // Header
+  doc.setFillColor(20, 30, 70);
+  doc.rect(0, 0, pageW, 70, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("FX Deal Decision Pack", margin, 38);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("Prototype · Indicative only · Not for execution", margin, 56);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(a.status, pageW - margin, 38, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.text(fmtTime(deal.createdAt), pageW - margin, 56, { align: "right" });
+  y = 90;
+
+  // Customer headline
+  text(`${deal.customerName}  ·  ${pair}`, { size: 14, bold: true });
+  text(deal.customerIndustry || "Industry not specified", { size: 10, color: [110, 110, 120] });
+
+  section(1, "Deal Summary");
+  kv("Amount (sell)", formatCurrency(deal.amount, deal.baseCcy));
+  kv("FX rate used", formatRate(deal.rate));
+  kv("Converted amount (buy)", formatCurrency(deal.convertedAmount, deal.targetCcy));
+  kv("Rate checked", fmtTime(deal.rateFetchedAt));
+  kv("Rate source", rateLabel(deal));
+  kv("Purpose", deal.purpose || "—");
+  kv("Urgency", deal.urgency);
+  kv("Relationship tier", deal.relationshipValue);
+
+  if (deal.rateSource === "demo-fallback") {
+    y += 4;
+    ensureSpace(28);
+    doc.setFillColor(255, 244, 220);
+    doc.setDrawColor(230, 180, 70);
+    doc.roundedRect(margin, y, contentW, 22, 3, 3, "FD");
+    doc.setTextColor(140, 90, 0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(
+      "Live FX feed unavailable — fallback reference rate shown. Not tradeable.",
+      margin + 8,
+      y + 14,
+    );
+    y += 30;
+  }
+
+  section(2, "Relationship & Business Value");
+  text(a.summary, { size: 10 });
+  y += 4;
+  a.businessValue.forEach((b) => text(`•  ${b}`, { size: 10, indent: 6 }));
+
+  section(3, "Risk Considerations");
+  a.risks.forEach((r) => text(`•  ${r}`, { size: 10, indent: 6 }));
+
+  section(4, "Recommended Next Step");
+  ensureSpace(28);
+  doc.setFillColor(248, 240, 225);
+  doc.setDrawColor(210, 160, 80);
+  doc.roundedRect(margin, y, contentW, 26, 3, 3, "FD");
+  doc.setTextColor(120, 70, 10);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(`→  ${a.nextStep}`, margin + 10, y + 17);
+  y += 34;
+
+  section(5, "Customer Questions to Validate");
+  a.questions.forEach((q, i) => text(`${i + 1}.  ${q}`, { size: 10, indent: 6 }));
+
+  if (deal.notes.trim()) {
+    section(6, "Internal Notes");
+    text(deal.notes, { size: 10, color: [80, 80, 90] });
+  }
+
+  // Footer on each page
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(140, 140, 150);
+    doc.text(
+      "Prototype only · Not for production trading · Rates via frankfurter.dev",
+      margin,
+      pageH - 20,
+    );
+    doc.text(`Page ${i} / ${pageCount}`, pageW - margin, pageH - 20, { align: "right" });
+  }
+
+  const safe = deal.customerName.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  doc.save(`fx-deal-pack-${safe}-${pair.replace("/", "")}.pdf`);
+}
