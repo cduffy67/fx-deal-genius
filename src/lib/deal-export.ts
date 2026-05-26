@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import { formatCurrency, formatRate } from "./fx";
 import type { Deal } from "./storage";
 import { analyseDeal } from "./deal-analysis";
+import { evaluateGovernance } from "./governance";
 
 function fmtTime(iso: string) {
   return (
@@ -60,6 +61,19 @@ export function buildDealPackText(deal: Deal): string {
   L.push("5. CUSTOMER QUESTIONS TO VALIDATE");
   L.push("-".repeat(60));
   a.questions.forEach((q, i) => L.push(`${i + 1}. ${q}`));
+  L.push("");
+  L.push("6. GOVERNANCE CHECK");
+  L.push("-".repeat(60));
+  const g = evaluateGovernance(deal);
+  L.push(`Outcome:        ${g.outcome}`);
+  L.push(`GBP equivalent: ~£${Math.round(g.gbpEquivalent).toLocaleString("en-GB")}`);
+  L.push(`Next action:    ${g.nextAction}`);
+  L.push("");
+  L.push("Matched policy rules:");
+  g.matchedRules.forEach((r) => L.push(`  ${r.id}. ${r.text}`));
+  L.push("");
+  L.push(`Explanation: ${g.explanation}`);
+  L.push(`Source: ${g.source}`);
   if (deal.notes.trim()) {
     L.push("");
     L.push("INTERNAL NOTES");
@@ -202,8 +216,21 @@ export function downloadDealPackPdf(deal: Deal) {
   section(5, "Customer Questions to Validate");
   a.questions.forEach((q, i) => text(`${i + 1}.  ${q}`, { size: 10, indent: 6 }));
 
+  section(6, "Governance Check");
+  const g = evaluateGovernance(deal);
+  kv("Outcome", g.outcome);
+  kv("GBP equivalent", `~£${Math.round(g.gbpEquivalent).toLocaleString("en-GB")}`);
+  y += 4;
+  text("Matched policy rules:", { size: 10, bold: true });
+  g.matchedRules.forEach((r) => text(`${r.id}.  ${r.text}`, { size: 9, indent: 6, color: [80, 80, 90] }));
+  y += 4;
+  text(g.explanation, { size: 10 });
+  y += 2;
+  text(`Next action: ${g.nextAction}`, { size: 10, bold: true });
+  text(`Source: ${g.source}`, { size: 9, color: [110, 110, 120] });
+
   if (deal.notes.trim()) {
-    section(6, "Internal Notes");
+    section(7, "Internal Notes");
     text(deal.notes, { size: 10, color: [80, 80, 90] });
   }
 
