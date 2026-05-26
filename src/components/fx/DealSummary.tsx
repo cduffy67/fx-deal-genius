@@ -232,7 +232,7 @@ function BulletList({
 
 function outcomeTone(o: PolicyOutcome): { bar: string; chip: string; label: string } {
   switch (o) {
-    case "Approved for indicative review":
+    case "Approved for Indicative Review":
       return { bar: "border-emerald-500/60 bg-emerald-500/5", chip: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30", label: "Approved" };
     case "Needs Treasury Review":
       return { bar: "border-amber-500/60 bg-amber-500/5", chip: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30", label: "Treasury" };
@@ -240,6 +240,8 @@ function outcomeTone(o: PolicyOutcome): { bar: string; chip: string; label: stri
       return { bar: "border-destructive/60 bg-destructive/5", chip: "bg-destructive/10 text-destructive border-destructive/30", label: "Compliance" };
     case "Needs More Information":
       return { bar: "border-sky-500/60 bg-sky-500/5", chip: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30", label: "More info" };
+    case "Enhanced Review Recommended":
+      return { bar: "border-primary/60 bg-primary/5", chip: "bg-primary/10 text-primary border-primary/30", label: "Enhanced" };
   }
 }
 

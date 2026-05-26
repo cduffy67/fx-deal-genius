@@ -2,10 +2,11 @@ import type { Deal } from "./storage";
 import { toEurEquivalent } from "./fx";
 
 export type PolicyOutcome =
-  | "Approved for indicative review"
+  | "Approved for Indicative Review"
   | "Needs Treasury Review"
   | "Needs Compliance Review"
-  | "Needs More Information";
+  | "Needs More Information"
+  | "Enhanced Review Recommended";
 
 export type PolicyRule = {
   id: string;
@@ -13,18 +14,22 @@ export type PolicyRule = {
 };
 
 export const NORTON_FX_POLICY: PolicyRule[] = [
-  { id: "P1", text: "Any FX request above £1,000,000 equivalent requires Treasury review before customer quote." },
-  { id: "P2", text: "Any FX request above £5,000,000 equivalent requires Treasury review and Compliance notification." },
-  { id: "P3", text: "ECB reference rates may be used for internal indicative analysis only. They must not be used as executable customer quotes." },
-  { id: "P4", text: "High urgency requests for high-value clients should be prioritised for same-day review." },
-  { id: "P5", text: "Requests involving missing customer purpose or incomplete notes should be returned to the relationship manager for clarification." },
-  { id: "P6", text: "All customer-facing quotes require an approved market data provider such as Bloomberg, Refinitiv or OANDA." },
-  { id: "P7", text: "Production systems must maintain an audit trail including requestor, timestamp, rate source, approval status and final action." },
-  { id: "P8", text: "Customer names and notional values should be treated as confidential business data." },
-  { id: "P9", text: "Any exception to policy must be recorded with reason, approver and timestamp." },
+  { id: "P1", text: "Any FX request above £1,000,000 equivalent requires Treasury Review before an indicative customer quote can be prepared." },
+  { id: "P2", text: "Any FX request above £5,000,000 equivalent requires Treasury Review and Compliance notification." },
+  { id: "P3", text: "ECB reference rates and Frankfurter API rates may be used for internal indicative analysis only. They must not be presented as executable customer quotes." },
+  { id: "P4", text: "High urgency requests for high relationship value clients should be prioritised for same-day review by the Relationship Manager and Treasury team." },
+  { id: "P5", text: "Requests with missing purpose, incomplete notes, or unclear customer context should be returned to the Relationship Manager for clarification." },
+  { id: "P6", text: "All customer-facing quotes require an approved market data provider such as Bloomberg, Refinitiv, OANDA, or another Norton Bank-approved source." },
+  { id: "P7", text: "Production systems must maintain an audit trail including requestor, timestamp, rate source, approval status, reviewer and final action." },
+  { id: "P8", text: "Customer names, deal sizes and relationship notes should be treated as confidential business data." },
+  { id: "P9", text: "Any policy exception must be recorded with reason, approver and timestamp." },
+  { id: "P10", text: "Deals involving sensitive industries, unusually high urgency, or unusually large notional values should be flagged for enhanced review." },
 ];
 
-export const POLICY_SOURCE_LABEL = "Northbank FX Governance Pack, Demo v1";
+export const POLICY_DOC_NAME = "Norton Bank FX Governance Pack";
+export const POLICY_DOC_VERSION = "Demo v1";
+export const POLICY_DOC_OWNER = "Norton Bank Treasury Operations";
+export const POLICY_SOURCE_LABEL = `${POLICY_DOC_NAME}, ${POLICY_DOC_VERSION}`;
 
 export type GovernanceCheck = {
   outcome: PolicyOutcome;
@@ -35,11 +40,14 @@ export type GovernanceCheck = {
   gbpEquivalent: number;
 };
 
-// Convert to GBP equivalent via EUR pivot (using fx fallback table for stable thresholds).
+function ruleById(id: string): PolicyRule {
+  return NORTON_FX_POLICY.find((r) => r.id === id)!;
+}
+
+// Convert to GBP equivalent via EUR pivot.
 function toGbpEquivalent(amount: number, ccy: Deal["baseCcy"]): number {
   const eur = toEurEquivalent(amount, ccy);
-  // GBP per EUR ≈ 0.85 (matches fx.ts EUR_FALLBACK)
-  return eur * 0.85;
+  return eur * 0.85; // GBP per EUR (matches fx.ts fallback table)
 }
 
 export function evaluateGovernance(deal: Deal): GovernanceCheck {
@@ -47,64 +55,77 @@ export function evaluateGovernance(deal: Deal): GovernanceCheck {
   const matched: PolicyRule[] = [];
   const explanations: string[] = [];
 
-  // Always applies: ECB rates are indicative only
-  matched.push(NORTON_FX_POLICY[2]); // P3
-  matched.push(NORTON_FX_POLICY[5]); // P6
+  // Always: indicative-only + approved-source requirement
+  matched.push(ruleById("P3"));
+  matched.push(ruleById("P6"));
   explanations.push(
-    "ECB / Frankfurter rates are indicative only — a customer-executable quote must come from an approved market data provider (Bloomberg, Refinitiv or OANDA).",
+    "ECB / Frankfurter rates are indicative only — any customer-executable quote must come from a Norton Bank-approved market data provider (Bloomberg, Refinitiv or OANDA).",
   );
 
   const incompleteContext = !deal.purpose.trim() || !deal.notes.trim();
-  if (incompleteContext) {
-    matched.push(NORTON_FX_POLICY[4]); // P5
-    explanations.push(
-      "Customer purpose or notes are missing — under P5 this request should be returned to the relationship manager for clarification before progressing.",
-    );
-  }
-
   const overCompliance = gbp > 5_000_000;
   const overTreasury = gbp > 1_000_000;
+  const enhancedFlag =
+    deal.urgency === "High" && deal.relationshipValue === "High";
 
-  if (overCompliance) {
-    matched.push(NORTON_FX_POLICY[0]); // P1
-    matched.push(NORTON_FX_POLICY[1]); // P2
+  if (incompleteContext) {
+    matched.push(ruleById("P5"));
     explanations.push(
-      `Notional of ~£${Math.round(gbp).toLocaleString("en-GB")} exceeds the £5,000,000 threshold — Treasury review and Compliance notification are required under P1 and P2.`,
+      "Customer purpose or notes are missing — under P5 this request must be returned to the Relationship Manager for clarification before progressing.",
+    );
+  }
+  if (overCompliance) {
+    matched.push(ruleById("P1"));
+    matched.push(ruleById("P2"));
+    explanations.push(
+      `Notional of ~£${Math.round(gbp).toLocaleString("en-GB")} exceeds the £5,000,000 threshold — Treasury Review and Compliance notification are required under P1 and P2.`,
     );
   } else if (overTreasury) {
-    matched.push(NORTON_FX_POLICY[0]); // P1
+    matched.push(ruleById("P1"));
     explanations.push(
-      `Notional of ~£${Math.round(gbp).toLocaleString("en-GB")} exceeds the £1,000,000 threshold — Treasury review is required under P1 before a customer quote can be issued.`,
+      `Notional of ~£${Math.round(gbp).toLocaleString("en-GB")} exceeds the £1,000,000 threshold — Treasury Review is required under P1 before an indicative customer quote can be prepared.`,
+    );
+  }
+  if (enhancedFlag) {
+    matched.push(ruleById("P4"));
+    matched.push(ruleById("P10"));
+    explanations.push(
+      "High urgency on a high relationship value client — P4 and P10 require same-day prioritisation and enhanced review by the Relationship Manager and Treasury team.",
     );
   }
 
-  if (deal.urgency === "High" && deal.relationshipValue === "High") {
-    matched.push(NORTON_FX_POLICY[3]); // P4
-    explanations.push(
-      "High urgency on a high-value client — P4 requires this to be prioritised for same-day review.",
-    );
-  }
-
+  // Outcome priority: More Info > Compliance > Treasury > Enhanced > Approved
   let outcome: PolicyOutcome;
   let nextAction: string;
   if (incompleteContext) {
     outcome = "Needs More Information";
-    nextAction = "Return to relationship manager to capture purpose of funds and complete deal notes.";
+    nextAction =
+      "Return to the Relationship Manager to capture purpose of funds and complete deal notes before further review.";
   } else if (overCompliance) {
     outcome = "Needs Compliance Review";
-    nextAction = "Route to Treasury for validation and notify Compliance before any customer-facing quote.";
+    nextAction =
+      "Route to Norton Bank Treasury for validation and notify Compliance before any customer-facing quote is issued.";
   } else if (overTreasury) {
     outcome = "Needs Treasury Review";
-    nextAction = "Submit to Treasury for review and approval prior to issuing an indicative customer quote.";
-  } else {
-    outcome = "Approved for indicative review";
     nextAction =
-      "May be used for internal indicative discussion. Any customer-facing quote must use an approved market data provider.";
+      "Submit to Norton Bank Treasury for review and approval prior to preparing an indicative customer quote.";
+  } else if (enhancedFlag) {
+    outcome = "Enhanced Review Recommended";
+    nextAction =
+      "Prioritise for same-day review by the Relationship Manager and Treasury team given the high-urgency, high-value profile.";
+  } else {
+    outcome = "Approved for Indicative Review";
+    nextAction =
+      "Cleared for internal indicative discussion. Any customer-facing quote must use a Norton Bank-approved market data provider.";
   }
+
+  // De-duplicate matched rules while preserving order
+  const seen = new Set<string>();
+  const dedup = matched.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
 
   return {
     outcome,
-    matchedRules: matched,
+    matchedRules: dedup,
     explanation: explanations.join(" "),
     nextAction,
     source: POLICY_SOURCE_LABEL,
