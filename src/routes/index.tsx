@@ -7,8 +7,16 @@ import { DealSummary } from "@/components/fx/DealSummary";
 import { DashboardCards } from "@/components/fx/DashboardCards";
 import { RecentRequestsTable } from "@/components/fx/RecentRequestsTable";
 import { ArchitectureNotes } from "@/components/fx/ArchitectureNotes";
+import { SecurityReadiness } from "@/components/fx/SecurityReadiness";
 import { fetchRate } from "@/lib/fx";
-import { loadDeals, saveDeals, type Deal } from "@/lib/storage";
+import {
+  fetchDeals,
+  insertDeal,
+  deleteDeal,
+  clearDeals,
+  type Deal,
+} from "@/lib/storage";
+import { deriveStatus } from "@/lib/deal-analysis";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/")({
@@ -31,45 +39,81 @@ function Index() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const stored = loadDeals();
-    setDeals(stored);
-    if (stored[0]) setActive(stored[0]);
+    fetchDeals()
+      .then((rows) => {
+        setDeals(rows);
+        if (rows[0]) setActive(rows[0]);
+      })
+      .catch((e) => {
+        console.error(e);
+        toast.error("Could not load saved requests");
+      });
   }, []);
-
-  function persist(next: Deal[]) {
-    setDeals(next);
-    saveDeals(next);
-  }
 
   async function handleSubmit(v: FormValues) {
     setLoading(true);
-    const amount = Number(v.amount);
-    const r = await fetchRate(v.baseCcy, v.targetCcy);
-    const deal: Deal = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      customerName: v.customerName.trim(),
-      customerIndustry: v.customerIndustry,
-      baseCcy: v.baseCcy,
-      targetCcy: v.targetCcy,
-      amount,
-      purpose: v.purpose.trim(),
-      urgency: v.urgency,
-      relationshipValue: v.relationshipValue,
-      notes: v.notes.trim(),
-      rate: r.rate,
-      convertedAmount: amount * r.rate,
-      rateFetchedAt: r.fetchedAt,
-      rateSource: r.source,
-    };
-    persist([deal, ...deals]);
-    setActive(deal);
-    setLoading(false);
-    if (r.source === "frankfurter")
-      toast.success("Live FX rate retrieved", { description: `${v.baseCcy}/${v.targetCcy} @ ${r.rate.toFixed(4)}` });
-    else if (r.source === "demo-fallback")
-      toast.warning("Live FX unavailable — using demo fallback rate");
-    else toast.message("Same currency — rate set to 1.0000");
+    try {
+      const amount = Number(v.amount);
+      const r = await fetchRate(v.baseCcy, v.targetCcy);
+      const draft: Omit<Deal, "id" | "createdAt"> = {
+        customerName: v.customerName.trim(),
+        customerIndustry: v.customerIndustry,
+        baseCcy: v.baseCcy,
+        targetCcy: v.targetCcy,
+        amount,
+        purpose: v.purpose.trim(),
+        urgency: v.urgency,
+        relationshipValue: v.relationshipValue,
+        notes: v.notes.trim(),
+        rate: r.rate,
+        convertedAmount: amount * r.rate,
+        rateFetchedAt: r.fetchedAt,
+        rateSource: r.source,
+      };
+      const status = deriveStatus({
+        ...draft,
+        id: "tmp",
+        createdAt: new Date().toISOString(),
+      });
+      const saved = await insertDeal({ ...draft, status });
+      setDeals((prev) => [saved, ...prev]);
+      setActive(saved);
+      if (r.source === "frankfurter")
+        toast.success("Live FX rate retrieved", {
+          description: `${v.baseCcy}/${v.targetCcy} @ ${r.rate.toFixed(4)}`,
+        });
+      else if (r.source === "demo-fallback")
+        toast.warning("Live FX unavailable — using demo fallback rate");
+      else toast.message("Same currency — rate set to 1.0000");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not save deal request");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteDeal(id);
+      const next = deals.filter((d) => d.id !== id);
+      setDeals(next);
+      if (active?.id === id) setActive(next[0] ?? null);
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not delete request");
+    }
+  }
+
+  async function handleClear() {
+    try {
+      await clearDeals();
+      setDeals([]);
+      setActive(null);
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not clear requests");
+    }
   }
 
   return (
@@ -115,16 +159,11 @@ function Index() {
         <RecentRequestsTable
           deals={deals}
           onSelect={setActive}
-          onDelete={(id) => {
-            const next = deals.filter((d) => d.id !== id);
-            persist(next);
-            if (active?.id === id) setActive(next[0] ?? null);
-          }}
-          onClear={() => {
-            persist([]);
-            setActive(null);
-          }}
+          onDelete={handleDelete}
+          onClear={handleClear}
         />
+
+        <SecurityReadiness />
 
         <ArchitectureNotes />
 
