@@ -23,11 +23,11 @@ import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FX Deal Desk Assistant" },
+      { title: "Norton Bank · FX Deal Desk Assistant" },
       {
         name: "description",
         content:
-          "Prototype FX deal desk assistant for banking sales: capture requests, fetch live ECB rates and generate customer-ready deal summaries.",
+          "Norton Bank internal prototype: capture FX requests, enrich with live ECB reference rates and cross-check against the Norton Bank FX Governance Pack.",
       },
     ],
   }),
