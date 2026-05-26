@@ -164,6 +164,8 @@ function Index() {
           onClear={handleClear}
         />
 
+        <PolicySource />
+
         <SecurityReadiness />
 
         <ArchitectureNotes />
