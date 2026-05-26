@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Duffy's Demo" },
+      { name: "description", content: "FX Deal Buddy helps financial professionals quickly assess FX deal requests by fetching live rates, calculating conversions, and generating summaries." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Duffy's Demo" },
+      { property: "og:description", content: "FX Deal Buddy helps financial professionals quickly assess FX deal requests by fetching live rates, calculating conversions, and generating summaries." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Duffy's Demo" },
+      { name: "twitter:description", content: "FX Deal Buddy helps financial professionals quickly assess FX deal requests by fetching live rates, calculating conversions, and generating summaries." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0a3d4f73-dcc6-4ba6-a4aa-781394fcbc04/id-preview-6c193262--235e6956-44af-4f40-9c3f-cdb033b52cc5.lovable.app-1779817120713.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0a3d4f73-dcc6-4ba6-a4aa-781394fcbc04/id-preview-6c193262--235e6956-44af-4f40-9c3f-cdb033b52cc5.lovable.app-1779817120713.png" },
     ],
     links: [
       {
