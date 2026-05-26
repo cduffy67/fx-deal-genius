@@ -8,6 +8,7 @@ import { DashboardCards } from "@/components/fx/DashboardCards";
 import { RecentRequestsTable } from "@/components/fx/RecentRequestsTable";
 import { ArchitectureNotes } from "@/components/fx/ArchitectureNotes";
 import { SecurityReadiness } from "@/components/fx/SecurityReadiness";
+import { PolicySource } from "@/components/fx/PolicySource";
 import { fetchRate } from "@/lib/fx";
 import {
   fetchDeals,
