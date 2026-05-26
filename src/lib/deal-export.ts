@@ -61,6 +61,19 @@ export function buildDealPackText(deal: Deal): string {
   L.push("5. CUSTOMER QUESTIONS TO VALIDATE");
   L.push("-".repeat(60));
   a.questions.forEach((q, i) => L.push(`${i + 1}. ${q}`));
+  L.push("");
+  L.push("6. GOVERNANCE CHECK");
+  L.push("-".repeat(60));
+  const g = evaluateGovernance(deal);
+  L.push(`Outcome:        ${g.outcome}`);
+  L.push(`GBP equivalent: ~£${Math.round(g.gbpEquivalent).toLocaleString("en-GB")}`);
+  L.push(`Next action:    ${g.nextAction}`);
+  L.push("");
+  L.push("Matched policy rules:");
+  g.matchedRules.forEach((r) => L.push(`  ${r.id}. ${r.text}`));
+  L.push("");
+  L.push(`Explanation: ${g.explanation}`);
+  L.push(`Source: ${g.source}`);
   if (deal.notes.trim()) {
     L.push("");
     L.push("INTERNAL NOTES");
