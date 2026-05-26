@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      deals: {
+        Row: {
+          amount: number
+          base_currency: string
+          converted_amount: number
+          created_at: string
+          customer_industry: string
+          customer_name: string
+          fx_rate: number
+          id: string
+          notes: string
+          purpose: string
+          rate_fetched_at: string
+          rate_source: string
+          relationship_value: string
+          status: string
+          target_currency: string
+          urgency: string
+        }
+        Insert: {
+          amount: number
+          base_currency: string
+          converted_amount: number
+          created_at?: string
+          customer_industry?: string
+          customer_name: string
+          fx_rate: number
+          id?: string
+          notes?: string
+          purpose?: string
+          rate_fetched_at?: string
+          rate_source?: string
+          relationship_value: string
+          status: string
+          target_currency: string
+          urgency: string
+        }
+        Update: {
+          amount?: number
+          base_currency?: string
+          converted_amount?: number
+          created_at?: string
+          customer_industry?: string
+          customer_name?: string
+          fx_rate?: number
+          id?: string
+          notes?: string
+          purpose?: string
+          rate_fetched_at?: string
+          rate_source?: string
+          relationship_value?: string
+          status?: string
+          target_currency?: string
+          urgency?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
