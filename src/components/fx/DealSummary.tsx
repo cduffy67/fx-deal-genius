@@ -1,17 +1,20 @@
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { RateBadge } from "./RateBadge";
+import { StatusBadge } from "./StatusBadge";
 import { formatCurrency, formatRate } from "@/lib/fx";
 import type { Deal } from "@/lib/storage";
 import { analyseDeal } from "@/lib/deal-analysis";
-import { FileText } from "lucide-react";
+import { FileText, ArrowRight } from "lucide-react";
 
 function fmtTime(iso: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "medium",
-    timeZone: "UTC",
-  }).format(new Date(iso)) + " UTC";
+  return (
+    new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+      timeZone: "UTC",
+    }).format(new Date(iso)) + " UTC"
+  );
 }
 
 export function DealSummary({ deal }: { deal: Deal | null }) {
@@ -29,96 +32,126 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
 
   const a = analyseDeal(deal);
   const pair = `${deal.baseCcy}/${deal.targetCcy}`;
+  const rateLabel =
+    deal.rateSource === "frankfurter"
+      ? "Live (ECB / Frankfurter)"
+      : deal.rateSource === "demo-fallback"
+        ? "Demo fallback — not executable"
+        : "Identity (same currency)";
 
   return (
     <Card className="rounded-md border-border p-6 shadow-none">
+      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Deal summary
+            Deal decision pack
           </div>
           <h2 className="mt-1 text-lg font-semibold text-foreground">
             {deal.customerName} · <span className="font-mono">{pair}</span>
           </h2>
         </div>
-        <RateBadge source={deal.rateSource} />
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={a.status} />
+          <RateBadge source={deal.rateSource} />
+        </div>
       </div>
 
       <Separator className="my-5" />
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-        <Metric label="FX rate" value={<span className="font-mono">{formatRate(deal.rate)}</span>} />
-        <Metric label="Sell" value={<span className="font-mono">{formatCurrency(deal.amount, deal.baseCcy)}</span>} />
-        <Metric label="Buy" value={<span className="font-mono">{formatCurrency(deal.convertedAmount, deal.targetCcy)}</span>} />
-        <Metric label="Rate checked" value={<span className="text-xs">{fmtTime(deal.rateFetchedAt)}</span>} />
+      {/* 1 — Deal Summary */}
+      <SectionTitle index={1} title="Deal Summary" />
+      <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 rounded-md border border-border bg-muted/30 p-4 sm:grid-cols-2">
+        <KV label="Customer" value={deal.customerName} />
+        <KV label="Industry" value={deal.customerIndustry || "—"} />
+        <KV label="Currency pair" value={<span className="font-mono">{pair}</span>} />
+        <KV
+          label="Amount (sell)"
+          value={<span className="font-mono">{formatCurrency(deal.amount, deal.baseCcy)}</span>}
+        />
+        <KV
+          label="FX rate used"
+          value={<span className="font-mono">{formatRate(deal.rate)}</span>}
+        />
+        <KV
+          label="Converted amount (buy)"
+          value={
+            <span className="font-mono">
+              {formatCurrency(deal.convertedAmount, deal.targetCcy)}
+            </span>
+          }
+        />
+        <KV label="Rate checked" value={<span className="text-xs">{fmtTime(deal.rateFetchedAt)}</span>} />
+        <KV label="Rate source" value={<span className="text-xs">{rateLabel}</span>} />
       </div>
 
       {deal.rateSource === "demo-fallback" && (
-        <div className="mt-5 rounded-md border border-[color:var(--warning)]/40 bg-[color:var(--warning)]/10 px-3 py-2 text-xs text-[color:var(--warning)]">
+        <div className="mt-4 rounded-md border border-[color:var(--warning)]/40 bg-[color:var(--warning)]/10 px-3 py-2 text-xs text-[color:var(--warning)]">
           Live FX feed unavailable. Showing fallback reference rate for demo purposes only — not tradeable.
         </div>
       )}
 
-      <Separator className="my-5" />
+      <Separator className="my-6" />
 
-      <Section title="Summary">
-        <p className="text-sm leading-relaxed text-foreground">{a.summary}</p>
-      </Section>
+      {/* 2 — Business value */}
+      <SectionTitle index={2} title="Relationship & Business Value" />
+      <p className="mt-2 text-sm leading-relaxed text-foreground">{a.summary}</p>
+      <BulletList items={a.businessValue} className="mt-3" />
 
-      <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Section title="Business value">
-          <BulletList items={a.businessValue} />
-        </Section>
-        <Section title="Risk considerations">
-          <BulletList items={a.risks} tone="risk" />
-        </Section>
+      <Separator className="my-6" />
+
+      {/* 3 — Risk considerations */}
+      <SectionTitle index={3} title="Risk Considerations" />
+      <BulletList items={a.risks} tone="risk" className="mt-3" />
+
+      <Separator className="my-6" />
+
+      {/* 4 — Recommended next step */}
+      <SectionTitle index={4} title="Recommended Next Step" />
+      <div className="mt-3 flex items-center gap-3 rounded-md border-l-2 border-accent bg-accent/5 px-4 py-3 text-sm font-medium text-foreground">
+        <ArrowRight className="h-4 w-4 text-accent" />
+        {a.nextStep}
       </div>
 
-      <Section title="Recommended next step" className="mt-5">
-        <div className="rounded-md border-l-2 border-accent bg-accent/5 px-4 py-3 text-sm text-foreground">
-          {a.nextStep}
-        </div>
-      </Section>
+      <Separator className="my-6" />
 
-      <Section title="Questions to validate with the customer" className="mt-5">
-        <BulletList items={a.questions} numbered />
-      </Section>
+      {/* 5 — Customer questions */}
+      <SectionTitle index={5} title="Customer Questions to Validate" />
+      <BulletList items={a.questions} numbered className="mt-3" />
 
       {deal.notes.trim() && (
-        <Section title="Notes captured" className="mt-5">
-          <p className="text-sm italic text-muted-foreground">"{deal.notes}"</p>
-        </Section>
+        <>
+          <Separator className="my-6" />
+          <SectionTitle title="Notes captured" />
+          <p className="mt-2 text-sm italic text-muted-foreground">"{deal.notes}"</p>
+        </>
       )}
     </Card>
   );
 }
 
-function Metric({ label, value }: { label: string; value: React.ReactNode }) {
+function SectionTitle({ index, title }: { index?: number; title: string }) {
   return (
-    <div>
-      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-1 text-sm font-medium text-foreground tabular-nums">{value}</div>
+    <div className="flex items-center gap-2">
+      {index !== undefined && (
+        <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-primary/10 font-mono text-[10px] font-semibold text-primary">
+          {index}
+        </span>
+      )}
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
+        {title}
+      </h3>
     </div>
   );
 }
 
-function Section({
-  title,
-  children,
-  className = "",
-}: {
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
+function KV({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className={className}>
-      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {title}
+    <div className="flex items-baseline justify-between gap-3 border-b border-dashed border-border/60 pb-2 last:border-0 last:pb-0 sm:border-0 sm:pb-0">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
       </div>
-      <div className="mt-2">{children}</div>
+      <div className="text-right text-sm font-medium text-foreground tabular-nums">{value}</div>
     </div>
   );
 }
@@ -127,19 +160,25 @@ function BulletList({
   items,
   tone,
   numbered,
+  className = "",
 }: {
   items: string[];
   tone?: "risk";
   numbered?: boolean;
+  className?: string;
 }) {
   const Tag = numbered ? "ol" : "ul";
   return (
-    <Tag className={`space-y-1.5 ${numbered ? "list-decimal pl-5" : "list-disc pl-5"}`}>
+    <Tag
+      className={`space-y-1.5 ${numbered ? "list-decimal pl-5" : "list-disc pl-5"} ${className}`}
+    >
       {items.map((it, i) => (
         <li
           key={i}
           className={`text-sm leading-relaxed ${
-            tone === "risk" ? "text-foreground marker:text-destructive" : "text-foreground marker:text-muted-foreground"
+            tone === "risk"
+              ? "text-foreground marker:text-destructive"
+              : "text-foreground marker:text-muted-foreground"
           }`}
         >
           {it}
