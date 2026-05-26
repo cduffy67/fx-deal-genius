@@ -6,8 +6,9 @@ import { StatusBadge } from "./StatusBadge";
 import { formatCurrency, formatRate } from "@/lib/fx";
 import type { Deal } from "@/lib/storage";
 import { analyseDeal } from "@/lib/deal-analysis";
+import { evaluateGovernance, type PolicyOutcome } from "@/lib/governance";
 import { buildDealPackText, downloadDealPackPdf } from "@/lib/deal-export";
-import { FileText, ArrowRight, Copy, Download } from "lucide-react";
+import { FileText, ArrowRight, Copy, Download, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 function fmtTime(iso: string) {
