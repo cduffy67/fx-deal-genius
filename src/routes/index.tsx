@@ -170,16 +170,22 @@ function Index() {
 
         <ArchitectureNotes />
 
-        <footer className="pt-4 pb-2 text-center text-[11px] text-muted-foreground">
-          Prototype only · Not for production trading · Rates via{" "}
-          <a
-            href="https://frankfurter.dev"
-            target="_blank"
-            rel="noreferrer"
-            className="underline hover:text-foreground"
-          >
-            frankfurter.dev
-          </a>
+        <footer className="space-y-1 pt-4 pb-2 text-center text-[11px] text-muted-foreground">
+          <p>
+            Prototype built to explore how manual FX request intake can become API-enriched,
+            governance-aware decision support.
+          </p>
+          <p>
+            Norton Bank internal prototype · Not for production trading · Indicative rates via{" "}
+            <a
+              href="https://frankfurter.dev"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-foreground"
+            >
+              frankfurter.dev
+            </a>
+          </p>
         </footer>
       </main>
 
