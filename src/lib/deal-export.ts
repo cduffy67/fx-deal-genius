@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import { formatCurrency, formatRate } from "./fx";
 import type { Deal } from "./storage";
 import { analyseDeal } from "./deal-analysis";
+import { evaluateGovernance } from "./governance";
 
 function fmtTime(iso: string) {
   return (
