@@ -155,6 +155,12 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
       <SectionTitle index={5} title="Customer Questions to Validate" />
       <BulletList items={a.questions} numbered className="mt-3" />
 
+      <Separator className="my-6" />
+
+      {/* 6 — Governance check */}
+      <SectionTitle index={6} title="Governance Check" />
+      <GovernanceBlock deal={deal} />
+
       {deal.notes.trim() && (
         <>
           <Separator className="my-6" />
