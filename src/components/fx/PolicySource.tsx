@@ -2,7 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BookLock, ChevronDown } from "lucide-react";
-import { NORTON_FX_POLICY, POLICY_SOURCE_LABEL } from "@/lib/governance";
+import {
+  NORTON_FX_POLICY,
+  POLICY_SOURCE_LABEL,
+  POLICY_DOC_OWNER,
+  POLICY_DOC_VERSION,
+} from "@/lib/governance";
 import { useState } from "react";
 
 export function PolicySource() {
