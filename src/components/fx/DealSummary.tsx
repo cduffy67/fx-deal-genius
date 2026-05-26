@@ -229,3 +229,65 @@ function BulletList({
     </Tag>
   );
 }
+
+function outcomeTone(o: PolicyOutcome): { bar: string; chip: string; label: string } {
+  switch (o) {
+    case "Approved for indicative review":
+      return { bar: "border-emerald-500/60 bg-emerald-500/5", chip: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30", label: "Approved" };
+    case "Needs Treasury Review":
+      return { bar: "border-amber-500/60 bg-amber-500/5", chip: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30", label: "Treasury" };
+    case "Needs Compliance Review":
+      return { bar: "border-destructive/60 bg-destructive/5", chip: "bg-destructive/10 text-destructive border-destructive/30", label: "Compliance" };
+    case "Needs More Information":
+      return { bar: "border-sky-500/60 bg-sky-500/5", chip: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30", label: "More info" };
+  }
+}
+
+function GovernanceBlock({ deal }: { deal: Deal }) {
+  const g = evaluateGovernance(deal);
+  const tone = outcomeTone(g.outcome);
+  return (
+    <div className="mt-3 space-y-4">
+      <div className={`flex flex-wrap items-center gap-3 rounded-md border-l-2 px-4 py-3 ${tone.bar}`}>
+        <ShieldCheck className="h-4 w-4 text-foreground" />
+        <span className="text-sm font-semibold text-foreground">{g.outcome}</span>
+        <span className={`rounded-sm border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${tone.chip}`}>
+          {tone.label}
+        </span>
+        <span className="ml-auto text-[11px] text-muted-foreground">
+          GBP equiv. ~£{Math.round(g.gbpEquivalent).toLocaleString("en-GB")}
+        </span>
+      </div>
+
+      <div>
+        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Matched policy rules
+        </div>
+        <ul className="mt-2 space-y-1.5">
+          {g.matchedRules.map((r) => (
+            <li key={r.id} className="flex gap-2 text-sm leading-relaxed text-foreground">
+              <span className="font-mono text-xs font-semibold text-primary">{r.id}</span>
+              <span>{r.text}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Explanation
+        </div>
+        <p className="mt-1 text-sm leading-relaxed text-foreground">{g.explanation}</p>
+      </div>
+
+      <div>
+        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Required next action
+        </div>
+        <p className="mt-1 text-sm font-medium leading-relaxed text-foreground">{g.nextAction}</p>
+      </div>
+
+      <p className="text-[11px] italic text-muted-foreground">Source: {g.source}</p>
+    </div>
+  );
+}
