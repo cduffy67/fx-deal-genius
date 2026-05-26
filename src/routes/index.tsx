@@ -122,20 +122,20 @@ function Index() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary font-mono text-xs font-bold text-primary-foreground">
-              FX
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary font-serif text-sm font-bold text-primary-foreground">
+              N
             </div>
             <div>
               <h1 className="text-base font-semibold tracking-tight text-foreground">
-                FX Deal Desk Assistant
+                Norton Bank · FX Deal Desk Assistant
               </h1>
               <p className="text-[11px] text-muted-foreground">
-                Sales enablement · live ECB reference rates
+                Internal prototype · Treasury Operations · live ECB reference rates
               </p>
             </div>
           </div>
           <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider">
-            Prototype · Demo
+            Norton Bank Internal Prototype
           </Badge>
         </div>
       </header>
