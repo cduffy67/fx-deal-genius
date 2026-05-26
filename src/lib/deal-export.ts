@@ -216,8 +216,21 @@ export function downloadDealPackPdf(deal: Deal) {
   section(5, "Customer Questions to Validate");
   a.questions.forEach((q, i) => text(`${i + 1}.  ${q}`, { size: 10, indent: 6 }));
 
+  section(6, "Governance Check");
+  const g = evaluateGovernance(deal);
+  kv("Outcome", g.outcome);
+  kv("GBP equivalent", `~£${Math.round(g.gbpEquivalent).toLocaleString("en-GB")}`);
+  y += 4;
+  text("Matched policy rules:", { size: 10, bold: true });
+  g.matchedRules.forEach((r) => text(`${r.id}.  ${r.text}`, { size: 9, indent: 6, color: [80, 80, 90] }));
+  y += 4;
+  text(g.explanation, { size: 10 });
+  y += 2;
+  text(`Next action: ${g.nextAction}`, { size: 10, bold: true });
+  text(`Source: ${g.source}`, { size: 9, color: [110, 110, 120] });
+
   if (deal.notes.trim()) {
-    section(6, "Internal Notes");
+    section(7, "Internal Notes");
     text(deal.notes, { size: 10, color: [80, 80, 90] });
   }
 
