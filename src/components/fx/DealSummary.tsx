@@ -57,6 +57,38 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={a.status} />
           <RateBadge source={deal.rateSource} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(buildDealPackText(deal));
+                toast.success("Deal pack copied to clipboard");
+              } catch {
+                toast.error("Could not copy to clipboard");
+              }
+            }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy deal pack
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            onClick={() => {
+              try {
+                downloadDealPackPdf(deal);
+                toast.success("PDF downloaded");
+              } catch (e) {
+                console.error(e);
+                toast.error("Could not generate PDF");
+              }
+            }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download PDF
+          </Button>
         </div>
       </div>
 
