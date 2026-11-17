@@ -80,6 +80,10 @@ export function buildDealPackText(deal: Deal): string {
   L.push("");
   L.push(`Explanation: ${a.governanceExplanation}`);
   L.push(`Source: ${g.source}`);
+  L.push("");
+  L.push("7. DRAFT REPLY TO CUSTOMER");
+  L.push("-".repeat(60));
+  L.push(a.customerReply);
   if (deal.notes.trim()) {
     L.push("");
     L.push("INTERNAL NOTES");
@@ -236,8 +240,11 @@ export function downloadDealPackPdf(deal: Deal) {
   text(`Source: ${g.source}`, { size: 9, color: [110, 110, 120] });
   text(provenanceLine(a), { size: 9, color: [110, 110, 120] });
 
+  section(7, "Draft Reply to Customer");
+  a.customerReply.split("\n").forEach((line) => text(line || " ", { size: 10 }));
+
   if (deal.notes.trim()) {
-    section(7, "Internal Notes");
+    section(8, "Internal Notes");
     text(deal.notes, { size: 10, color: [80, 80, 90] });
   }
 

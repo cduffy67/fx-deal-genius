@@ -17,13 +17,14 @@ import {
   deleteDeal,
   resetDemo,
   saveDeals,
-  isSample,
   type Deal,
 } from "@/lib/storage";
 import { draftAiAnalysis } from "@/lib/ai";
-import { EXAMPLE_SCENARIOS, refreshSampleRates } from "@/lib/scenarios";
+import { refreshSampleRates } from "@/lib/scenarios";
+import { extractRequestFromEmail } from "@/lib/intake";
+import { StartPanel } from "@/components/fx/StartPanel";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 function isSameRequest(d: Deal, v: FormValues): boolean {
   return (
@@ -59,6 +60,8 @@ function Index() {
   const [loading, setLoading] = useState(false);
   const [aiPendingId, setAiPendingId] = useState<string | null>(null);
   const [prefill, setPrefill] = useState<{ key: number; values: FormValues } | undefined>();
+  const [extracting, setExtracting] = useState(false);
+  const [intake, setIntake] = useState<{ gaps: string[]; model: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,8 +69,7 @@ function Index() {
       .then(async (rows) => {
         if (cancelled) return;
         setDeals(rows);
-        setActive(rows[0] ?? null);
-        await showcaseSamples(rows, () => cancelled);
+        await refreshSamples(rows, () => cancelled);
       })
       .catch((e) => {
         console.error(e);
@@ -79,21 +81,29 @@ function Index() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * First-visit polish: swap sample deals onto live rates, then AI-draft the
-   * pack that's on screen so a new visitor sees the full product immediately.
+   * Sample deals start on the static fallback table; swap them onto live
+   * rates. The page opens on the Start panel, not on a finished pack.
    */
-  async function showcaseSamples(rows: Deal[], isCancelled: () => boolean = () => false) {
+  async function refreshSamples(rows: Deal[], isCancelled: () => boolean = () => false) {
     const refreshed = await refreshSampleRates(rows);
-    if (isCancelled()) return;
-    if (refreshed !== rows) {
-      await saveDeals(refreshed);
-      setDeals(refreshed);
-      setActive((cur) => refreshed.find((d) => d.id === cur?.id) ?? refreshed[0] ?? null);
+    if (isCancelled() || refreshed === rows) return;
+    await saveDeals(refreshed);
+    setDeals(refreshed);
+    setActive((cur) => (cur ? (refreshed.find((d) => d.id === cur.id) ?? cur) : cur));
+  }
+
+  async function handleExtract(email: string) {
+    setExtracting(true);
+    const r = await extractRequestFromEmail(email);
+    setExtracting(false);
+    if (!r) {
+      toast.error("Couldn't read that email. Try again, or fill in the form yourself.");
+      return;
     }
-    const first = refreshed[0];
-    if (first && isSample(first) && !first.ai && first.rateSource !== "demo-fallback") {
-      void runAi(first, { quiet: true });
-    }
+    setPrefill((p) => ({ key: (p?.key ?? 0) + 1, values: r.values }));
+    setIntake({ gaps: r.gaps, model: r.model });
+    toast.success("Form filled from the email. Check it, then generate.");
+    document.getElementById("deal-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function handleSubmit(v: FormValues) {
@@ -128,6 +138,7 @@ function Index() {
       const saved = await insertDeal(draft);
       setDeals((prev) => [saved, ...prev]);
       setActive(saved);
+      setIntake(null);
       if (r.source === "frankfurter")
         toast.success("Live FX rate retrieved", {
           description: `${v.baseCcy}/${v.targetCcy} @ ${r.rate.toFixed(4)}`,
@@ -158,6 +169,7 @@ function Index() {
   }
 
   function runExample(values: FormValues) {
+    setIntake(null);
     setPrefill((p) => ({ key: (p?.key ?? 0) + 1, values }));
     void handleSubmit(values);
   }
@@ -167,7 +179,7 @@ function Index() {
       await deleteDeal(id);
       const next = deals.filter((d) => d.id !== id);
       setDeals(next);
-      if (active?.id === id) setActive(next[0] ?? null);
+      if (active?.id === id) setActive(null);
     } catch (e) {
       console.error(e);
       toast.error("Could not delete request");
@@ -177,9 +189,10 @@ function Index() {
   async function handleReset() {
     const seeded = await resetDemo();
     setDeals(seeded);
-    setActive(seeded[0] ?? null);
+    setActive(null);
+    setIntake(null);
     toast.message("Demo reset to sample deals");
-    await showcaseSamples(seeded);
+    await refreshSamples(seeded);
   }
 
   return (
@@ -208,25 +221,6 @@ function Index() {
       <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
         <DashboardCards deals={deals} />
 
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-4 py-3">
-          <span className="mr-1 flex items-center gap-1.5 text-xs font-medium text-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-accent" />
-            Try an example
-          </span>
-          {EXAMPLE_SCENARIOS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              disabled={loading}
-              onClick={() => runExample(s.values)}
-              className="rounded-md border border-border bg-background px-3 py-1.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/40 disabled:opacity-50"
-            >
-              <div className="text-xs font-medium text-foreground">{s.label}</div>
-              <div className="text-[10px] text-muted-foreground">{s.blurb}</div>
-            </button>
-          ))}
-        </div>
-
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
           <div className="rounded-md border border-border bg-card p-6">
             <div className="mb-5">
@@ -235,14 +229,49 @@ function Index() {
                 Capture the request — rate is fetched on submit.
               </p>
             </div>
+            {intake && (
+              <div className="mb-5 rounded-md border border-accent/40 bg-accent/5 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Sparkles className="h-3.5 w-3.5 text-accent" />
+                    Filled from email by AI. Check before generating.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIntake(null)}
+                    className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {intake.gaps.length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-[11px] leading-snug text-muted-foreground">
+                    {intake.gaps.map((g, i) => (
+                      <li key={i}>{g}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             <DealForm onSubmit={handleSubmit} loading={loading} prefill={prefill} />
           </div>
 
-          <DealSummary
-            deal={active}
-            aiLoading={!!active && aiPendingId === active.id}
-            onDraftAi={aiPendingId ? undefined : (d) => void runAi(d)}
-          />
+          {active ? (
+            <DealSummary
+              deal={active}
+              aiLoading={aiPendingId === active.id}
+              onDraftAi={aiPendingId ? undefined : (d) => void runAi(d)}
+              onNewRequest={() => setActive(null)}
+            />
+          ) : (
+            <StartPanel
+              onExample={runExample}
+              onExtract={(e) => void handleExtract(e)}
+              extracting={extracting}
+              busy={loading}
+            />
+          )}
         </div>
 
         <RecentRequestsTable

@@ -8,7 +8,7 @@ import type { Deal } from "@/lib/storage";
 import { buildPack, type DealPack, type Provenance } from "@/lib/deal-analysis";
 import type { PolicyOutcome } from "@/lib/governance";
 import { buildDealPackText, downloadDealPackPdf } from "@/lib/deal-export";
-import { FileText, ArrowRight, Copy, Download, ShieldCheck, Sparkles, Loader2 } from "lucide-react";
+import { FileText, ArrowRight, Copy, Download, ShieldCheck, Sparkles, Loader2, Plus, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 function fmtTime(iso: string) {
@@ -25,10 +25,12 @@ export function DealSummary({
   deal,
   onDraftAi,
   aiLoading = false,
+  onNewRequest,
 }: {
   deal: Deal | null;
   onDraftAi?: (deal: Deal) => void;
   aiLoading?: boolean;
+  onNewRequest?: () => void;
 }) {
   if (!deal) {
     return (
@@ -64,6 +66,12 @@ export function DealSummary({
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {onNewRequest && (
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={onNewRequest}>
+              <Plus className="h-3.5 w-3.5" />
+              New request
+            </Button>
+          )}
           <StatusBadge status={a.status} />
           <RateBadge source={deal.rateSource} />
           <Button
@@ -170,6 +178,36 @@ export function DealSummary({
       {/* 6 — Governance check */}
       <SectionTitle index={6} title="Governance Check" source="engine" />
       <GovernanceBlock pack={a} />
+
+      <Separator className="my-6" />
+
+      {/* 7 — Customer reply */}
+      <SectionTitle index={7} title="Draft Reply to Customer" source={a.replyProvenance} />
+      <div className="mt-3 rounded-md border border-border bg-muted/20">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
+          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Mail className="h-3.5 w-3.5" />
+            To {deal.customerName} · checked for internal terms and firm-rate language
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 gap-1 px-2 text-[11px]"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(a.customerReply);
+                toast.success("Reply copied");
+              } catch {
+                toast.error("Could not copy to clipboard");
+              }
+            }}
+          >
+            <Copy className="h-3 w-3" />
+            Copy
+          </Button>
+        </div>
+        <p className="whitespace-pre-line px-4 py-3 text-sm leading-relaxed text-foreground">{a.customerReply}</p>
+      </div>
 
       {deal.notes.trim() && (
         <>

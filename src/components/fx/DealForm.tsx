@@ -119,7 +119,7 @@ export function DealForm({
   );
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form id="deal-form" onSubmit={submit} className="space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="customerName" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -129,8 +129,8 @@ export function DealForm({
             id="customerName"
             value={v.customerName}
             onChange={(e) => set("customerName", e.target.value)}
-            placeholder="Acme Industrial AG"
-            className="mt-2"
+            placeholder="e.g. Acme Industrial AG"
+            className="mt-2 placeholder:text-muted-foreground/50"
           />
           {errors.customerName && (
             <p className="mt-1 text-xs text-destructive">{errors.customerName}</p>
@@ -189,8 +189,8 @@ export function DealForm({
             inputMode="decimal"
             value={v.amount}
             onChange={(e) => set("amount", e.target.value.replace(/[^0-9.]/g, ""))}
-            placeholder="1,000,000"
-            className="mt-2 font-mono"
+            placeholder="e.g. 1,000,000"
+            className="mt-2 font-mono placeholder:text-muted-foreground/50"
           />
           {errors.amount && (
             <p className="mt-1 text-xs text-destructive">{errors.amount}</p>
@@ -206,8 +206,8 @@ export function DealForm({
           id="purpose"
           value={v.purpose}
           onChange={(e) => set("purpose", e.target.value)}
-          placeholder="Supplier payment, Q2 invoice batch"
-          className="mt-2"
+          placeholder="e.g. Supplier payment, Q2 invoice batch"
+          className="mt-2 placeholder:text-muted-foreground/50"
         />
         {errors.purpose && (
           <p className="mt-1 text-xs text-destructive">{errors.purpose}</p>
@@ -229,8 +229,8 @@ export function DealForm({
           id="notes"
           value={v.notes}
           onChange={(e) => set("notes", e.target.value)}
-          placeholder="Recurring monthly EUR/USD flow; client typically executes intraday."
-          className="mt-2 min-h-[88px]"
+          placeholder="e.g. Recurring monthly flow; client usually books mid-morning."
+          className="mt-2 min-h-[88px] placeholder:text-muted-foreground/50"
         />
       </div>
 

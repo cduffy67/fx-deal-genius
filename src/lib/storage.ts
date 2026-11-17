@@ -12,6 +12,8 @@ export type AiAnalysis = {
   governanceExplanation: string;
   /** Policy rule ids the model cited, filtered to rules the engine matched. */
   citedRules: string[];
+  /** Draft email to the customer; dropped if it fails the reply guardrail. */
+  customerReply?: string;
   model: string;
   generatedAt: string;
 };

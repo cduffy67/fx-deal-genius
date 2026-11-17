@@ -36,6 +36,7 @@ export type AnalystResponse = {
   rm_questions?: unknown;
   governance_explanation?: unknown;
   cited_rules?: unknown;
+  customer_reply?: unknown;
   model?: unknown;
   error?: unknown;
 };

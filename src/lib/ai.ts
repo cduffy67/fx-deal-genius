@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { evaluateGovernance } from "./governance";
 import { buildAnalystRequest } from "./ai-request";
+import { replyIssues } from "./text-checks";
 import type { AiAnalysis, Deal } from "./storage";
 
 function strings(v: unknown, max: number): string[] {
@@ -45,6 +46,16 @@ export async function draftAiAnalysis(deal: Deal): Promise<AiAnalysis | null> {
       explanation = "";
     }
 
+    // Guardrail: the customer reply is only kept if it passes the reply checks
+    // (no internal rule ids or review names, no firm-rate claims, matches outcome).
+    let customerReply =
+      typeof d.customer_reply === "string" ? d.customer_reply.trim().slice(0, 1500) : "";
+    const issues = customerReply ? replyIssues(customerReply, g.outcome) : [];
+    if (issues.length) {
+      console.warn("[deal-analyst] discarded customer reply", issues);
+      customerReply = "";
+    }
+
     if (!businessValue.length && !risks.length && !questions.length) return null;
 
     return {
@@ -53,6 +64,7 @@ export async function draftAiAnalysis(deal: Deal): Promise<AiAnalysis | null> {
       questions,
       governanceExplanation: explanation,
       citedRules: cited.filter((id) => matchedIds.includes(id)),
+      customerReply: customerReply || undefined,
       model: typeof d.model === "string" ? d.model : "unknown",
       generatedAt: new Date().toISOString(),
     };

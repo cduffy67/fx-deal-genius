@@ -6,8 +6,21 @@ export type Scenario = {
   id: string;
   label: string;
   blurb: string;
+  /** The policy outcome this example demonstrates (shown on the card). */
+  outcome: string;
   values: FormValues;
 };
+
+/** A realistic, slightly messy customer email for the "paste an email" demo. */
+export const SAMPLE_EMAIL = `Hi team,
+
+Hope you're well. We need to get USD 8m across to our LNG supplier for the cargo arriving next week. Payment is due Friday so ideally we'd lock something in by Thursday at the latest.
+
+Could you send over a rate? Same setup as last quarter. Our CFO also wants to talk about hedging the next two cargoes at some point.
+
+Thanks,
+Priya
+Head of Treasury, Atlantic Grid Energy plc`;
 
 /**
  * One-click examples. Each one exercises a different path through the
@@ -18,6 +31,7 @@ export const EXAMPLE_SCENARIOS: Scenario[] = [
     id: "routine",
     label: "Routine supplier payment",
     blurb: "£400k GBP/EUR, complete context",
+    outcome: "Approved for indicative review",
     values: {
       customerName: "Brennan Logistics Ltd",
       customerIndustry: "Logistics",
@@ -34,7 +48,8 @@ export const EXAMPLE_SCENARIOS: Scenario[] = [
   {
     id: "large-urgent",
     label: "Large, urgent energy deal",
-    blurb: "£6m GBP/USD, triggers Treasury + Compliance",
+    blurb: "£6m GBP/USD, high urgency, top-tier client",
+    outcome: "Needs Compliance review",
     values: {
       customerName: "Atlantic Grid Energy plc",
       customerIndustry: "Energy & Commodities",
@@ -52,6 +67,7 @@ export const EXAMPLE_SCENARIOS: Scenario[] = [
     id: "missing-context",
     label: "Missing customer context",
     blurb: "€250k EUR/GBP, no notes captured",
+    outcome: "Needs more information",
     values: {
       customerName: "Halden Retail Group",
       customerIndustry: "Retail",

@@ -35,7 +35,33 @@ export type DealPack = Analysis & {
   governance: GovernanceCheck;
   governanceExplanation: string;
   provenance: Provenance;
+  customerReply: string;
+  replyProvenance: Provenance;
 };
+
+/** Rule-based customer reply, used when there's no (safe) AI draft. */
+export function templateReply(deal: Deal, g: GovernanceCheck = evaluateGovernance(deal)): string {
+  const pair = `${deal.baseCcy}/${deal.targetCcy}`;
+  const amt = formatCurrency(deal.amount, deal.baseCcy);
+  const opening = `Thanks for your request to convert ${amt} into ${deal.targetCcy}.`;
+  let body: string;
+  switch (g.outcome) {
+    case "Needs More Information":
+      body =
+        "Before we can go further, could you confirm the purpose of the payment and your preferred settlement date? Once we have that we'll come back to you with next steps.";
+      break;
+    case "Needs Treasury Review":
+    case "Needs Compliance Review":
+      body = `Given the size of the transaction, it goes through our standard checks before we can price it. We'll come back to you with an indicative ${pair} level as soon as those are complete.`;
+      break;
+    case "Enhanced Review Recommended":
+      body = `We've prioritised this for same-day attention and will come back to you shortly with an indicative ${pair} level.`;
+      break;
+    default:
+      body = `We're happy to proceed and will share an indicative ${pair} level shortly. Please note any level we share is indicative until confirmed at execution.`;
+  }
+  return `Hi ${deal.customerName},\n\n${opening} ${body}\n\nKind regards,\nNorton Bank FX Desk`;
+}
 
 type Tier = "small" | "mid" | "large" | "strategic";
 
@@ -168,8 +194,11 @@ export function buildPack(deal: Deal): DealPack {
       governance,
       governanceExplanation: governance.explanation,
       provenance: { kind: "rules" },
+      customerReply: templateReply(deal, governance),
+      replyProvenance: { kind: "rules" },
     };
   }
+  const aiProv: Provenance = { kind: "ai", model: ai.model, generatedAt: ai.generatedAt };
   return {
     ...base,
     businessValue: ai.businessValue.length ? ai.businessValue : base.businessValue,
@@ -177,6 +206,8 @@ export function buildPack(deal: Deal): DealPack {
     questions: ai.questions.length ? ai.questions : base.questions,
     governance,
     governanceExplanation: ai.governanceExplanation || governance.explanation,
-    provenance: { kind: "ai", model: ai.model, generatedAt: ai.generatedAt },
+    provenance: aiProv,
+    customerReply: ai.customerReply || templateReply(deal, governance),
+    replyProvenance: ai.customerReply ? aiProv : { kind: "rules" },
   };
 }
