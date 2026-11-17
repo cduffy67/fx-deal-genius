@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "lucide-react";
-import type { Deal } from "@/lib/storage";
+import { isSample, type Deal } from "@/lib/storage";
 import { formatCurrency } from "@/lib/fx";
 import { deriveStatus } from "@/lib/deal-analysis";
 import { StatusBadge } from "./StatusBadge";
@@ -88,7 +88,14 @@ export function RecentRequestsTable({
                     className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/40"
                   >
                     <td className="px-5 py-3 font-medium text-foreground">
-                      <div>{d.customerName}</div>
+                      <div className="flex items-center gap-1.5">
+                        {d.customerName}
+                        {isSample(d) && (
+                          <span className="rounded-sm border border-border bg-muted px-1 py-px font-mono text-[9px] font-normal uppercase tracking-wider text-muted-foreground">
+                            Sample
+                          </span>
+                        )}
+                      </div>
                       {d.customerIndustry && (
                         <div className="text-[11px] text-muted-foreground">
                           {d.customerIndustry}

@@ -16,12 +16,28 @@ import {
   updateDeal,
   deleteDeal,
   resetDemo,
+  saveDeals,
+  isSample,
   type Deal,
 } from "@/lib/storage";
 import { draftAiAnalysis } from "@/lib/ai";
-import { EXAMPLE_SCENARIOS } from "@/lib/scenarios";
+import { EXAMPLE_SCENARIOS, refreshSampleRates } from "@/lib/scenarios";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
+
+function isSameRequest(d: Deal, v: FormValues): boolean {
+  return (
+    d.customerName === v.customerName.trim() &&
+    d.customerIndustry === v.customerIndustry &&
+    d.baseCcy === v.baseCcy &&
+    d.targetCcy === v.targetCcy &&
+    d.amount === Number(v.amount) &&
+    d.purpose === v.purpose.trim() &&
+    d.urgency === v.urgency &&
+    d.relationshipValue === v.relationshipValue &&
+    d.notes === v.notes.trim()
+  );
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -45,18 +61,51 @@ function Index() {
   const [prefill, setPrefill] = useState<{ key: number; values: FormValues } | undefined>();
 
   useEffect(() => {
+    let cancelled = false;
     fetchDeals()
-      .then((rows) => {
+      .then(async (rows) => {
+        if (cancelled) return;
         setDeals(rows);
-        if (rows[0]) setActive(rows[0]);
+        setActive(rows[0] ?? null);
+        await showcaseSamples(rows, () => cancelled);
       })
       .catch((e) => {
         console.error(e);
         toast.error("Could not load saved requests");
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * First-visit polish: swap sample deals onto live rates, then AI-draft the
+   * pack that's on screen so a new visitor sees the full product immediately.
+   */
+  async function showcaseSamples(rows: Deal[], isCancelled: () => boolean = () => false) {
+    const refreshed = await refreshSampleRates(rows);
+    if (isCancelled()) return;
+    if (refreshed !== rows) {
+      await saveDeals(refreshed);
+      setDeals(refreshed);
+      setActive((cur) => refreshed.find((d) => d.id === cur?.id) ?? refreshed[0] ?? null);
+    }
+    const first = refreshed[0];
+    if (first && isSample(first) && !first.ai && first.rateSource !== "demo-fallback") {
+      void runAi(first, { quiet: true });
+    }
+  }
 
   async function handleSubmit(v: FormValues) {
+    // Same request submitted again within 2 minutes (e.g. example + Generate): reuse it.
+    const dupe = deals.find(
+      (d) => isSameRequest(d, v) && Date.now() - new Date(d.createdAt).getTime() < 120_000,
+    );
+    if (dupe) {
+      setActive(dupe);
+      toast.message("Already generated — showing the existing pack");
+      return;
+    }
     setLoading(true);
     try {
       const amount = Number(v.amount);
@@ -95,12 +144,12 @@ function Index() {
     }
   }
 
-  async function runAi(deal: Deal) {
+  async function runAi(deal: Deal, opts: { quiet?: boolean } = {}) {
     setAiPendingId(deal.id);
     const ai = await draftAiAnalysis(deal);
     setAiPendingId((id) => (id === deal.id ? null : id));
     if (!ai) {
-      toast.message("AI drafting unavailable — showing the rule-based pack");
+      if (!opts.quiet) toast.message("AI drafting unavailable — showing the rule-based pack");
       return;
     }
     const updated = await updateDeal({ ...deal, ai });
@@ -130,6 +179,7 @@ function Index() {
     setDeals(seeded);
     setActive(seeded[0] ?? null);
     toast.message("Demo reset to sample deals");
+    await showcaseSamples(seeded);
   }
 
   return (

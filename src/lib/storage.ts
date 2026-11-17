@@ -69,6 +69,15 @@ function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/** Sample deals seeded on first visit (ids "sample-1" … "sample-5"). */
+export function isSample(d: Pick<Deal, "id">): boolean {
+  return d.id.startsWith("sample-");
+}
+
+export async function saveDeals(deals: Deal[]): Promise<void> {
+  write(deals);
+}
+
 export async function fetchDeals(): Promise<Deal[]> {
   const existing = read();
   if (existing) return existing;

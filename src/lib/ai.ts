@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { evaluateGovernance } from "./governance";
+import { buildAnalystRequest } from "./ai-request";
 import type { AiAnalysis, Deal } from "./storage";
 
 function strings(v: unknown, max: number): string[] {
@@ -20,27 +21,7 @@ export async function draftAiAnalysis(deal: Deal): Promise<AiAnalysis | null> {
 
   try {
     const { data, error } = await supabase.functions.invoke("deal-analyst", {
-      body: {
-        deal: {
-          customerName: deal.customerName,
-          customerIndustry: deal.customerIndustry,
-          baseCcy: deal.baseCcy,
-          targetCcy: deal.targetCcy,
-          amount: String(deal.amount),
-          rate: deal.rate.toFixed(6),
-          rateSource: deal.rateSource,
-          purpose: deal.purpose,
-          urgency: deal.urgency,
-          relationshipValue: deal.relationshipValue,
-          notes: deal.notes,
-        },
-        governance: {
-          outcome: g.outcome,
-          matchedRuleIds: matchedIds,
-          nextAction: g.nextAction,
-          gbpEquivalent: String(Math.round(g.gbpEquivalent)),
-        },
-      },
+      body: buildAnalystRequest(deal, g),
     });
     if (error || !data || typeof data !== "object" || "error" in data) {
       console.warn("[deal-analyst] unavailable", error ?? data);

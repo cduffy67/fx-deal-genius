@@ -1,5 +1,5 @@
 import type { FormValues } from "@/components/fx/DealForm";
-import { fallbackRate } from "./fx";
+import { fallbackRate, fetchRate } from "./fx";
 import type { Deal } from "./storage";
 
 export type Scenario = {
@@ -92,11 +92,14 @@ const EXTRA_SEEDS: FormValues[] = [
 ];
 
 /**
- * Sample deals shown on a visitor's first load. They use the static
- * fallback rate table, so they are honestly labelled "Demo Data".
+ * Sample deals shown on a visitor's first load. Built synchronously with the
+ * static fallback table so the page renders instantly; refreshSampleRates()
+ * then swaps in live ECB rates. The energy deal comes first so the landing
+ * view shows the richest path (Compliance outcome, six matched rules).
  */
 export function buildSeedDeals(now: Date = new Date()): Deal[] {
-  const all = [...EXAMPLE_SCENARIOS.map((s) => s.values), ...EXTRA_SEEDS];
+  const [routine, largeUrgent, missing] = EXAMPLE_SCENARIOS.map((s) => s.values);
+  const all = [largeUrgent, routine, missing, ...EXTRA_SEEDS];
   return all.map((v, i) => {
     const at = new Date(now.getTime() - (i + 1) * 47 * 60_000).toISOString();
     const amount = Number(v.amount);
@@ -117,6 +120,35 @@ export function buildSeedDeals(now: Date = new Date()): Deal[] {
       convertedAmount: amount * rate,
       rateFetchedAt: at,
       rateSource: "demo-fallback" as const,
+    };
+  });
+}
+
+/** Replace fallback rates on sample deals with live Frankfurter rates (one call per pair). */
+export async function refreshSampleRates(deals: Deal[]): Promise<Deal[]> {
+  const stale = deals.filter((d) => d.id.startsWith("sample-") && d.rateSource === "demo-fallback");
+  if (!stale.length) return deals;
+
+  const pairs = Array.from(new Set(stale.map((d) => `${d.baseCcy}/${d.targetCcy}`)));
+  const results = await Promise.all(
+    pairs.map(async (p) => {
+      const [base, target] = p.split("/") as [Deal["baseCcy"], Deal["targetCcy"]];
+      return [p, await fetchRate(base, target)] as const;
+    }),
+  );
+  const byPair = new Map(results);
+
+  return deals.map((d) => {
+    if (!d.id.startsWith("sample-") || d.rateSource !== "demo-fallback") return d;
+    const r = byPair.get(`${d.baseCcy}/${d.targetCcy}`);
+    if (!r || r.source === "demo-fallback") return d;
+    return {
+      ...d,
+      rate: r.rate,
+      convertedAmount: d.amount * r.rate,
+      rateFetchedAt: r.fetchedAt,
+      rateSource: r.source,
+      ai: undefined, // drafted against the old rate
     };
   });
 }

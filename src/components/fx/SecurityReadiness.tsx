@@ -56,7 +56,7 @@ const ITEMS: Item[] = [
   {
     icon: ScrollText,
     title: "Audit trail",
-    demo: "Row timestamps only.",
+    demo: "Browser timestamps only. No user attribution.",
     production: "Immutable, time-stamped, user-attributed log for MiFID II / Dodd-Frank record-keeping.",
     owner: "Compliance",
   },
@@ -126,7 +126,7 @@ export function SecurityReadiness() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {ITEMS.map((it) => {
           const Icon = it.icon;
           return (
