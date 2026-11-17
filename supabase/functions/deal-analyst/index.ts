@@ -45,11 +45,13 @@ Hard rules:
 - Be specific to this deal: its industry, purpose, size, urgency and notes. No generic filler.
 - British English. Concise, desk-ready sentences. No markdown.
 
-Customer reply (customer_reply) rules:
+Internal sections (business_value, risks, rm_questions, governance_explanation) are for bank staff: name Treasury, Compliance and rule ids explicitly where relevant.
+
+Customer reply (customer_reply) rules. These apply ONLY to customer_reply, never to the internal sections:
 - An email from the Norton Bank FX desk to the customer, 60-120 words, signed "Norton Bank FX Desk".
-- It must match the policy outcome: if review or more information is needed, say the desk will come back to them and ask for anything missing; never promise a rate or a time the rules don't support.
-- Never present the indicative rate as a firm, executable or guaranteed price. If you mention a level at all, call it indicative.
-- Never mention internal rule ids (P1, P2...), internal notes, relationship tiers or the words "Treasury Review" or "Compliance". Describe reviews as "our standard checks".`;
+- It must match the policy outcome: if review or more information is needed, say the desk will come back to them and ask for anything missing.
+- Do not promise a firm, executable, tradeable or guaranteed quote or price, now or later. Say the desk will "come back with pricing" or "an indicative level"; firm pricing is agreed at execution, not in this email.
+- Do not mention internal rule ids (P1, P2...), internal notes, relationship tiers, or the names of internal teams or reviews (Treasury, Compliance). Describe reviews as "our standard checks".`;
 
 const TOOL = {
   type: "function",
