@@ -1,20 +1,26 @@
 # FX Deal Desk Assistant
 
-**AI decision support for FX request intake, with policy guardrails the model can't override.**
+**Turn client FX emails into checked, policy-routed tickets with a safe reply to send.**
 
 **[Try it live →](https://fx-deal-genius.lovable.app)** · **[Read the evals →](#evals-do-the-guardrails-actually-hold)** · Built by [Conor Duffy](https://human-shaped-systems.lovable.app)
 
-A relationship manager pastes in a customer's email. AI pulls out the FX request and flags what's missing, and the RM checks it. The app adds a live ECB reference rate and checks the request against the bank's FX governance policy. It then produces a decision pack: business value, risks, a recommended next step, questions for the customer, a governance outcome that cites specific policy rules, and a draft reply to the customer. The pack exports to PDF or plain text.
+**Who it's for:** a relationship manager whose clients send FX requests as messy emails ("need to get $8m to our LNG supplier by Friday, same as last quarter"), and who today retypes them into a system, works out who needs to review them, and writes back by hand.
+
+**What it does:** the RM pastes the email. AI pulls out the request and flags what's missing or assumed, and the RM checks it. The bank's policy, not the AI, decides the routing (Treasury, Compliance, more information, or cleared). AI then drafts a reply the RM can send while the request is reviewed, and the reply is checked so it never promises a firm price or leaks internal detail. Extra desk context (business value, risks, questions to ask) is there if wanted, collapsed by default.
 
 Norton Bank is a fictional bank used for the demo.
 
-| 1. Paste a customer email | 2. AI fills the form and flags gaps |
+| 1. Paste a client email | 2. AI fills the ticket and flags gaps |
 |---|---|
 | ![Start panel](docs/01-start.jpg) | ![Email intake](docs/02-email-intake.jpg) |
-| **3. Policy engine decides, AI drafts the pack** | **4. A checked reply to the customer** |
+| **3. Bank policy routes the ticket** | **4. A checked reply to send** |
 | ![Decision pack](docs/03-decision-pack.jpg) | ![Customer reply](docs/04-customer-reply.jpg) |
 
 ---
+
+## What's real here, and what's scaffolding
+
+The valuable part is the front door: turning unstructured client messages into checked tickets, and sending a safe holding reply. That's a real, repetitive job. The routing thresholds stand in for approval workflows banks already run, and routine small-ticket FX usually goes through e-FX platforms rather than an RM. So treat this as a working pattern for **messy input → AI extraction → human check → deterministic policy → constrained AI reply**, which applies well beyond FX.
 
 ## Why it exists
 

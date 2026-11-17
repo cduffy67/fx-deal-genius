@@ -244,7 +244,7 @@ export function DealForm({
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Fetching rate…
             </>
           ) : (
-            "Generate deal summary"
+            "Create ticket"
           )}
         </Button>
       </div>

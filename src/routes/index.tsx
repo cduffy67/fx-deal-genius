@@ -47,7 +47,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Norton Bank internal prototype: capture FX requests, enrich with live ECB reference rates and cross-check against the Norton Bank FX Governance Pack.",
+          "Turn client FX emails into checked, policy-routed tickets with a safe reply to send. Norton Bank internal prototype.",
       },
     ],
   }),
@@ -208,7 +208,7 @@ function Index() {
                 Norton Bank · FX Deal Desk Assistant
               </h1>
               <p className="text-[11px] text-muted-foreground">
-                Internal prototype · Treasury Operations · live ECB reference rates
+                Client FX email triage for relationship managers · live ECB reference rates
               </p>
             </div>
           </div>

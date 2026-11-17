@@ -59,7 +59,7 @@ export function DealSummary({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Deal decision pack
+            FX request ticket
           </div>
           <h2 className="mt-1 text-lg font-semibold text-foreground">
             {deal.customerName} · <span className="font-mono">{pair}</span>
@@ -113,8 +113,8 @@ export function DealSummary({
 
       <AiBar provenance={a.provenance} loading={aiLoading} onDraft={onDraftAi ? () => onDraftAi(deal) : undefined} />
 
-      {/* 1 — Deal Summary */}
-      <SectionTitle index={1} title="Deal Summary" />
+      {/* 1 — Client request */}
+      <SectionTitle index={1} title="Client Request" />
       <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 rounded-md border border-border bg-muted/30 p-4 sm:grid-cols-2">
         <KV label="Customer" value={deal.customerName} />
         <KV label="Industry" value={deal.customerIndustry || "—"} />
@@ -145,44 +145,28 @@ export function DealSummary({
         </div>
       )}
 
-      <Separator className="my-6" />
-
-      {/* 2 — Business value */}
-      <SectionTitle index={2} title="Relationship & Business Value" source={a.provenance} />
-      <p className="mt-2 text-sm leading-relaxed text-foreground">{a.summary}</p>
-      <BulletList items={a.businessValue} className="mt-3" />
 
       <Separator className="my-6" />
 
-      {/* 3 — Risk considerations */}
-      <SectionTitle index={3} title="Risk Considerations" source={a.provenance} />
-      <BulletList items={a.risks} tone="risk" className="mt-3" />
+      {/* 2 — Policy check */}
+      <SectionTitle index={2} title="Policy Check" source="engine" />
+      <GovernanceBlock pack={a} />
+
 
       <Separator className="my-6" />
 
-      {/* 4 — Recommended next step */}
-      <SectionTitle index={4} title="Recommended Next Step" source="engine" />
+      {/* 3 — Next step */}
+      <SectionTitle index={3} title="Next Step" source="engine" />
       <div className="mt-3 flex items-center gap-3 rounded-md border-l-2 border-accent bg-accent/5 px-4 py-3 text-sm font-medium text-foreground">
         <ArrowRight className="h-4 w-4 text-accent" />
         {a.nextStep}
       </div>
 
-      <Separator className="my-6" />
-
-      {/* 5 — Customer questions */}
-      <SectionTitle index={5} title="Customer Questions to Validate" source={a.provenance} />
-      <BulletList items={a.questions} numbered className="mt-3" />
 
       <Separator className="my-6" />
 
-      {/* 6 — Governance check */}
-      <SectionTitle index={6} title="Governance Check" source="engine" />
-      <GovernanceBlock pack={a} />
-
-      <Separator className="my-6" />
-
-      {/* 7 — Customer reply */}
-      <SectionTitle index={7} title="Draft Reply to Customer" source={a.replyProvenance} />
+      {/* 4 — Customer reply */}
+      <SectionTitle index={4} title="Reply to Send" source={a.replyProvenance} />
       <div className="mt-3 rounded-md border border-border bg-muted/20">
         <div className="flex items-center justify-between border-b border-border px-4 py-2">
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -209,6 +193,35 @@ export function DealSummary({
         <p className="whitespace-pre-line px-4 py-3 text-sm leading-relaxed text-foreground">{a.customerReply}</p>
       </div>
 
+
+      <Separator className="my-6" />
+
+      <details className="group mt-2 rounded-md border border-border">
+        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground">
+          More detail for the desk: business value, risks and questions to ask
+        </summary>
+        <div className="space-y-6 border-t border-border px-4 py-4">
+          <div>
+      {/* 2 — Business value */}
+      <SectionTitle title="Relationship & Business Value" source={a.provenance} />
+      <p className="mt-2 text-sm leading-relaxed text-foreground">{a.summary}</p>
+      <BulletList items={a.businessValue} className="mt-3" />
+
+          </div>
+          <div>
+      {/* 3 — Risk considerations */}
+      <SectionTitle title="Risk Considerations" source={a.provenance} />
+      <BulletList items={a.risks} tone="risk" className="mt-3" />
+
+          </div>
+          <div>
+      {/* 5 — Customer questions */}
+      <SectionTitle title="Customer Questions to Validate" source={a.provenance} />
+      <BulletList items={a.questions} numbered className="mt-3" />
+
+          </div>
+        </div>
+      </details>
       {deal.notes.trim() && (
         <>
           <Separator className="my-6" />

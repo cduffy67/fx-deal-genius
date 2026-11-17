@@ -8,8 +8,8 @@ import { EXAMPLE_SCENARIOS, SAMPLE_EMAIL } from "@/lib/scenarios";
 
 const STEPS = [
   { icon: Mail, title: "Capture", text: "A customer FX request, pasted or typed" },
-  { icon: ShieldCheck, title: "Check", text: "Rules engine applies bank policy" },
-  { icon: Sparkles, title: "Draft", text: "AI writes the decision pack and reply" },
+  { icon: ShieldCheck, title: "Check", text: "Bank policy routes it, not the AI" },
+  { icon: Sparkles, title: "Reply", text: "A reply checked for safe wording" },
 ];
 
 /**
@@ -33,9 +33,9 @@ export function StartPanel({
     <Card className="flex h-full flex-col gap-6 rounded-md border-border p-6 shadow-none">
       <div>
         <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Start here</div>
-        <h2 className="mt-1 text-lg font-semibold text-foreground">Turn a customer's FX request into a decision pack</h2>
+        <h2 className="mt-1 text-lg font-semibold text-foreground">Clear client FX emails in minutes, not retyping</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bank policy decides what happens next. AI does the reading and the writing.
+          Paste a client's email: AI turns it into a checked ticket, bank policy routes it, and you get a safe reply to send.
         </p>
         <ol className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {STEPS.map((s, i) => (
@@ -128,7 +128,7 @@ export function StartPanel({
 
       <p className="flex items-center gap-1.5 border-t border-border pt-4 text-[11px] text-muted-foreground">
         <FileText className="h-3.5 w-3.5" />
-        You can also fill in the form yourself, or open a sample deal from Recent requests below to see a finished pack.
+        You can also fill in the form yourself, or open a sample from Recent requests below to see a finished ticket.
       </p>
     </Card>
   );
