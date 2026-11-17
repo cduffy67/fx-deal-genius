@@ -2,11 +2,17 @@
 
 **AI decision support for FX request intake, with policy guardrails the model can't override.**
 
-**Live demo:** https://fx-deal-genius.lovable.app
+**[Try it live →](https://fx-deal-genius.lovable.app)** · **[Read the evals →](#evals-do-the-guardrails-actually-hold)** · Built by [Conor Duffy](https://human-shaped-systems.lovable.app)
 
 A relationship manager pastes in a customer's email. AI pulls out the FX request and flags what's missing, and the RM checks it. The app adds a live ECB reference rate and checks the request against the bank's FX governance policy. It then produces a decision pack: business value, risks, a recommended next step, questions for the customer, a governance outcome that cites specific policy rules, and a draft reply to the customer. The pack exports to PDF or plain text.
 
 Norton Bank is a fictional bank used for the demo.
+
+| 1. Paste a customer email | 2. AI fills the form and flags gaps |
+|---|---|
+| ![Start panel](docs/01-start.jpg) | ![Email intake](docs/02-email-intake.jpg) |
+| **3. Policy engine decides, AI drafts the pack** | **4. A checked reply to the customer** |
+| ![Decision pack](docs/03-decision-pack.jpg) | ![Customer reply](docs/04-customer-reply.jpg) |
 
 ---
 
@@ -165,6 +171,10 @@ bun run dev
 
 The AI drafting needs a `LOVABLE_API_KEY` in the edge function environment. Without it, the app falls back to the rule-based pack.
 
+## Licence
+
+MIT. See [LICENSE](LICENSE).
+
 ---
 
-Built with [Lovable](https://lovable.dev) and [Claude](https://claude.ai). Changes pushed to `main` sync back to the Lovable project.
+Built by [Conor Duffy](https://human-shaped-systems.lovable.app) with [Lovable](https://lovable.dev) and [Claude](https://claude.ai). Changes pushed to `main` sync back to the Lovable project.

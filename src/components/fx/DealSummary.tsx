@@ -259,9 +259,11 @@ function AiBar({
   if (provenance.kind === "ai")
     return (
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-        <Sparkles className="h-3.5 w-3.5 text-accent" />
-        Narrative drafted by <span className="font-mono">{provenance.model}</span>. Outcome, thresholds and next step
-        come from the policy engine and cannot be changed by the model.
+        <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" />
+        <span>
+          Narrative drafted by <span className="font-mono">{provenance.model}</span>. Outcome, thresholds and next
+          step come from the policy engine and cannot be changed by the model.
+        </span>
       </div>
     );
   return (
