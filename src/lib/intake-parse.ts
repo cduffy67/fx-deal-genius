@@ -64,10 +64,10 @@ export function parseIntake(raw: Record<string, unknown>): IntakeResult | null {
     amount = String(Math.round(n));
   } else {
     // Amount stated in the currency they receive: convert to the sell side.
-    const sellAmount = Math.round(n / fallbackRate(sell as Currency, amountCcy) / 1000) * 1000;
+    const sellAmount = Math.round(n / fallbackRate(sell as Currency, amountCcy as Currency) / 1000) * 1000;
     amount = String(sellAmount);
     gaps.push(
-      `Amount was given as ${formatCurrency(n, amountCcy)} (what they receive). Converted to about ${formatCurrency(sellAmount, sell as Currency)} to sell at a reference rate. Confirm the exact figure.`,
+      `Amount was given as ${formatCurrency(n, amountCcy as Currency)} (what they receive). Converted to about ${formatCurrency(sellAmount, sell as Currency)} to sell at a reference rate. Confirm the exact figure.`,
     );
   }
 
