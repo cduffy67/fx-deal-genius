@@ -1,8 +1,20 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { Currency } from "./fx";
+import { buildSeedDeals } from "./scenarios";
 
 export type Urgency = "Low" | "Medium" | "High";
 export type RelationshipValue = "Low" | "Medium" | "High";
+
+/** LLM-drafted narrative. Never decides outcome, thresholds or next step. */
+export type AiAnalysis = {
+  businessValue: string[];
+  risks: string[];
+  questions: string[];
+  governanceExplanation: string;
+  /** Policy rule ids the model cited, filtered to rules the engine matched. */
+  citedRules: string[];
+  model: string;
+  generatedAt: string;
+};
 
 export type Deal = {
   id: string;
@@ -20,93 +32,69 @@ export type Deal = {
   convertedAmount: number;
   rateFetchedAt: string;
   rateSource: "frankfurter" | "demo-fallback" | "identity";
+  ai?: AiAnalysis;
 };
 
-type Row = {
-  id: string;
-  created_at: string;
-  customer_name: string;
-  customer_industry: string;
-  base_currency: string;
-  target_currency: string;
-  amount: number | string;
-  fx_rate: number | string;
-  converted_amount: number | string;
-  urgency: string;
-  relationship_value: string;
-  purpose: string;
-  notes: string;
-  status: string;
-  rate_source: string;
-  rate_fetched_at: string;
-};
+/*
+ * Public demo storage: each visitor's requests live in their own browser
+ * (localStorage). Nothing is shared between visitors, so nobody can see,
+ * spam or wipe anyone else's data. First visit is seeded with sample deals.
+ */
+const STORAGE_KEY = "norton-fx-deals-v2";
+const MAX_DEALS = 100;
 
-function rowToDeal(r: Row): Deal {
-  return {
-    id: r.id,
-    createdAt: r.created_at,
-    customerName: r.customer_name,
-    customerIndustry: r.customer_industry ?? "",
-    baseCcy: r.base_currency as Currency,
-    targetCcy: r.target_currency as Currency,
-    amount: Number(r.amount),
-    purpose: r.purpose ?? "",
-    urgency: r.urgency as Urgency,
-    relationshipValue: r.relationship_value as RelationshipValue,
-    notes: r.notes ?? "",
-    rate: Number(r.fx_rate),
-    convertedAmount: Number(r.converted_amount),
-    rateFetchedAt: r.rate_fetched_at,
-    rateSource: r.rate_source as Deal["rateSource"],
-  };
+function read(): Deal[] | null {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Deal[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function write(deals: Deal[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(deals.slice(0, MAX_DEALS)));
+  } catch {
+    // Storage full or blocked (private mode) — demo keeps working in memory.
+  }
+}
+
+function newId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export async function fetchDeals(): Promise<Deal[]> {
-  const { data, error } = await supabase
-    .from("deals")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (error) throw error;
-  return ((data ?? []) as Row[]).map(rowToDeal);
+  const existing = read();
+  if (existing) return existing;
+  const seeded = buildSeedDeals();
+  write(seeded);
+  return seeded;
 }
 
-export async function insertDeal(
-  d: Omit<Deal, "id" | "createdAt"> & { status: string },
-): Promise<Deal> {
-  const { data, error } = await supabase
-    .from("deals")
-    .insert({
-      customer_name: d.customerName,
-      customer_industry: d.customerIndustry,
-      base_currency: d.baseCcy,
-      target_currency: d.targetCcy,
-      amount: d.amount,
-      fx_rate: d.rate,
-      converted_amount: d.convertedAmount,
-      urgency: d.urgency,
-      relationship_value: d.relationshipValue,
-      purpose: d.purpose,
-      notes: d.notes,
-      status: d.status,
-      rate_source: d.rateSource,
-      rate_fetched_at: d.rateFetchedAt,
-    })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return rowToDeal(data as Row);
+export async function insertDeal(d: Omit<Deal, "id" | "createdAt">): Promise<Deal> {
+  const deal: Deal = { ...d, id: newId(), createdAt: new Date().toISOString() };
+  write([deal, ...(read() ?? [])]);
+  return deal;
+}
+
+export async function updateDeal(deal: Deal): Promise<Deal> {
+  write((read() ?? []).map((d) => (d.id === deal.id ? deal : d)));
+  return deal;
 }
 
 export async function deleteDeal(id: string): Promise<void> {
-  const { error } = await supabase.from("deals").delete().eq("id", id);
-  if (error) throw error;
+  write((read() ?? []).filter((d) => d.id !== id));
 }
 
-export async function clearDeals(): Promise<void> {
-  const { error } = await supabase
-    .from("deals")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
-  if (error) throw error;
+/** Restore the sample deals (only affects this visitor's browser). */
+export async function resetDemo(): Promise<Deal[]> {
+  const seeded = buildSeedDeals();
+  write(seeded);
+  return seeded;
 }

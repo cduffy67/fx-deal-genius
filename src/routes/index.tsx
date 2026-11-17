@@ -13,12 +13,15 @@ import { fetchRate } from "@/lib/fx";
 import {
   fetchDeals,
   insertDeal,
+  updateDeal,
   deleteDeal,
-  clearDeals,
+  resetDemo,
   type Deal,
 } from "@/lib/storage";
-import { deriveStatus } from "@/lib/deal-analysis";
+import { draftAiAnalysis } from "@/lib/ai";
+import { EXAMPLE_SCENARIOS } from "@/lib/scenarios";
 import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,6 +41,8 @@ function Index() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [active, setActive] = useState<Deal | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aiPendingId, setAiPendingId] = useState<string | null>(null);
+  const [prefill, setPrefill] = useState<{ key: number; values: FormValues } | undefined>();
 
   useEffect(() => {
     fetchDeals()
@@ -71,12 +76,7 @@ function Index() {
         rateFetchedAt: r.fetchedAt,
         rateSource: r.source,
       };
-      const status = deriveStatus({
-        ...draft,
-        id: "tmp",
-        createdAt: new Date().toISOString(),
-      });
-      const saved = await insertDeal({ ...draft, status });
+      const saved = await insertDeal(draft);
       setDeals((prev) => [saved, ...prev]);
       setActive(saved);
       if (r.source === "frankfurter")
@@ -86,12 +86,31 @@ function Index() {
       else if (r.source === "demo-fallback")
         toast.warning("Live FX unavailable — using demo fallback rate");
       else toast.message("Same currency — rate set to 1.0000");
+      setLoading(false);
+      void runAi(saved);
     } catch (e) {
       console.error(e);
       toast.error("Could not save deal request");
-    } finally {
       setLoading(false);
     }
+  }
+
+  async function runAi(deal: Deal) {
+    setAiPendingId(deal.id);
+    const ai = await draftAiAnalysis(deal);
+    setAiPendingId((id) => (id === deal.id ? null : id));
+    if (!ai) {
+      toast.message("AI drafting unavailable — showing the rule-based pack");
+      return;
+    }
+    const updated = await updateDeal({ ...deal, ai });
+    setDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+    setActive((cur) => (cur?.id === updated.id ? updated : cur));
+  }
+
+  function runExample(values: FormValues) {
+    setPrefill((p) => ({ key: (p?.key ?? 0) + 1, values }));
+    void handleSubmit(values);
   }
 
   async function handleDelete(id: string) {
@@ -106,15 +125,11 @@ function Index() {
     }
   }
 
-  async function handleClear() {
-    try {
-      await clearDeals();
-      setDeals([]);
-      setActive(null);
-    } catch (e) {
-      console.error(e);
-      toast.error("Could not clear requests");
-    }
+  async function handleReset() {
+    const seeded = await resetDemo();
+    setDeals(seeded);
+    setActive(seeded[0] ?? null);
+    toast.message("Demo reset to sample deals");
   }
 
   return (
@@ -143,6 +158,25 @@ function Index() {
       <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
         <DashboardCards deals={deals} />
 
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-4 py-3">
+          <span className="mr-1 flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-accent" />
+            Try an example
+          </span>
+          {EXAMPLE_SCENARIOS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              disabled={loading}
+              onClick={() => runExample(s.values)}
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/40 disabled:opacity-50"
+            >
+              <div className="text-xs font-medium text-foreground">{s.label}</div>
+              <div className="text-[10px] text-muted-foreground">{s.blurb}</div>
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
           <div className="rounded-md border border-border bg-card p-6">
             <div className="mb-5">
@@ -151,17 +185,21 @@ function Index() {
                 Capture the request — rate is fetched on submit.
               </p>
             </div>
-            <DealForm onSubmit={handleSubmit} loading={loading} />
+            <DealForm onSubmit={handleSubmit} loading={loading} prefill={prefill} />
           </div>
 
-          <DealSummary deal={active} />
+          <DealSummary
+            deal={active}
+            aiLoading={!!active && aiPendingId === active.id}
+            onDraftAi={aiPendingId ? undefined : (d) => void runAi(d)}
+          />
         </div>
 
         <RecentRequestsTable
           deals={deals}
           onSelect={setActive}
           onDelete={handleDelete}
-          onClear={handleClear}
+          onReset={handleReset}
         />
 
         <PolicySource />

@@ -17,7 +17,7 @@ const EUR_FALLBACK: Record<Currency, number> = {
   CHF: 0.95,
 };
 
-function fallbackRate(base: Currency, target: Currency): number {
+export function fallbackRate(base: Currency, target: Currency): number {
   if (base === target) return 1;
   // cross via EUR
   return EUR_FALLBACK[target] / EUR_FALLBACK[base];

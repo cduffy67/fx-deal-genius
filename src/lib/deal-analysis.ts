@@ -1,5 +1,11 @@
-import { toEurEquivalent, formatCurrency } from "./fx";
+import { formatCurrency } from "./fx";
 import type { Deal } from "./storage";
+import {
+  evaluateGovernance,
+  gbpEquivalent,
+  REVIEW_THRESHOLDS_GBP,
+  type GovernanceCheck,
+} from "./governance";
 
 export type DealStatus =
   | "Draft"
@@ -22,28 +28,61 @@ export type Analysis = {
   status: DealStatus;
 };
 
-function tierOf(eurAmount: number): "small" | "mid" | "large" | "strategic" {
-  if (eurAmount < 50_000) return "small";
-  if (eurAmount < 500_000) return "mid";
-  if (eurAmount < 5_000_000) return "large";
+/** Where the narrative sections came from. Decisions always come from the policy engine. */
+export type Provenance = { kind: "ai"; model: string; generatedAt: string } | { kind: "rules" };
+
+export type DealPack = Analysis & {
+  governance: GovernanceCheck;
+  governanceExplanation: string;
+  provenance: Provenance;
+};
+
+type Tier = "small" | "mid" | "large" | "strategic";
+
+// Tiers line up with the governance thresholds (GBP equivalent).
+function tierOf(gbp: number): Tier {
+  if (gbp < 50_000) return "small";
+  if (gbp <= REVIEW_THRESHOLDS_GBP.treasury) return "mid";
+  if (gbp <= REVIEW_THRESHOLDS_GBP.compliance) return "large";
   return "strategic";
 }
 
-export function deriveStatus(deal: Deal): DealStatus {
+/** Status shown in the table and pack header — derived from the governance outcome. */
+export function deriveStatus(deal: Deal, g: GovernanceCheck = evaluateGovernance(deal)): DealStatus {
   if (deal.rateSource === "demo-fallback") return "Demo Data";
-  const eur = toEurEquivalent(deal.amount, deal.baseCcy);
-  const tier = tierOf(eur);
-  if (tier === "large" || tier === "strategic") return "Needs Treasury Review";
-  if (deal.urgency === "High" && tier === "mid") return "Needs Treasury Review";
-  if (deal.relationshipValue === "High" || tier === "mid") return "Ready for Follow-up";
-  return "Draft";
+  switch (g.outcome) {
+    case "Needs More Information":
+      return "Draft";
+    case "Needs Compliance Review":
+    case "Needs Treasury Review":
+      return "Needs Treasury Review";
+    default:
+      return "Ready for Follow-up";
+  }
 }
 
-export function analyseDeal(deal: Deal): Analysis {
-  const eur = toEurEquivalent(deal.amount, deal.baseCcy);
-  const tier = tierOf(eur);
+/** Recommended next step — derived from the governance outcome. */
+function deriveNextStep(g: GovernanceCheck): NextStep {
+  switch (g.outcome) {
+    case "Needs More Information":
+      return "Request more customer information";
+    case "Needs Compliance Review":
+      return "Escalate for compliance review";
+    case "Needs Treasury Review":
+    case "Enhanced Review Recommended":
+      return "Proceed to treasury validation";
+    default:
+      return "Prepare indicative customer quote";
+  }
+}
+
+/** Deterministic, rule-based analysis. Used as-is when AI is unavailable. */
+export function analyseDeal(deal: Deal, g: GovernanceCheck = evaluateGovernance(deal)): Analysis {
+  const gbp = gbpEquivalent(deal);
+  const tier = tierOf(gbp);
   const pair = `${deal.baseCcy}/${deal.targetCcy}`;
   const industry = deal.customerIndustry || "industry not specified";
+  const needsReview = g.outcome === "Needs Treasury Review" || g.outcome === "Needs Compliance Review";
 
   // ---------- Summary ----------
   const summary =
@@ -82,8 +121,10 @@ export function analyseDeal(deal: Deal): Analysis {
   const risks: string[] = [
     "FX rate shown is an ECB reference rate (Frankfurter) — indicative only, not executable.",
   ];
-  if (tier === "large" || tier === "strategic")
-    risks.push("Large notional — treasury review and credit-line confirmation required before quoting.");
+  if (needsReview)
+    risks.push(
+      `Notional of ~£${Math.round(gbp).toLocaleString("en-GB")} is above the review threshold — Treasury sign-off and credit-line confirmation required before quoting.`,
+    );
   if (!deal.customerIndustry || !deal.notes.trim())
     risks.push("Customer context is incomplete — validate KYC, purpose of funds and counterparty profile.");
   if (deal.urgency === "High")
@@ -92,29 +133,50 @@ export function analyseDeal(deal: Deal): Analysis {
     "Production use would require an approved tradeable data source, full audit trail and MiFID II record-keeping.",
   );
 
-  // ---------- Next step (constrained to 4) ----------
-  const status = deriveStatus(deal);
-  let nextStep: NextStep;
-  if (deal.rateSource === "demo-fallback") {
-    nextStep = "Escalate for compliance review";
-  } else if (tier === "large" || tier === "strategic") {
-    nextStep = "Proceed to treasury validation";
-  } else if (!deal.customerIndustry || !deal.notes.trim()) {
-    nextStep = "Request more customer information";
-  } else {
-    nextStep = "Prepare indicative customer quote";
-  }
-
   // ---------- Questions ----------
   const questions: string[] = [
     `Confirm value date and settlement instructions for ${deal.targetCcy}.`,
     `Is this a one-off conversion or part of recurring ${pair} flow we can size for?`,
     "Any hedging requirement (forward, option) the desk should price alongside the spot?",
   ];
-  if (tier === "large" || tier === "strategic")
-    questions.push("Confirm credit line availability and counterparty exposure limits.");
-  if (deal.urgency === "High")
-    questions.push("What is the latest acceptable execution time today?");
+  if (needsReview) questions.push("Confirm credit line availability and counterparty exposure limits.");
+  if (deal.urgency === "High") questions.push("What is the latest acceptable execution time today?");
 
-  return { summary, businessValue, risks, nextStep, questions, status };
+  return {
+    summary,
+    businessValue,
+    risks,
+    nextStep: deriveNextStep(g),
+    questions,
+    status: deriveStatus(deal, g),
+  };
+}
+
+/**
+ * The full decision pack shown in the UI and exports.
+ * Policy outcome, matched rules, status and next step are always deterministic.
+ * Business value, risks, RM questions and the plain-English governance
+ * explanation use the AI draft when one exists, otherwise the rule-based text.
+ */
+export function buildPack(deal: Deal): DealPack {
+  const governance = evaluateGovernance(deal);
+  const base = analyseDeal(deal, governance);
+  const ai = deal.ai;
+  if (!ai) {
+    return {
+      ...base,
+      governance,
+      governanceExplanation: governance.explanation,
+      provenance: { kind: "rules" },
+    };
+  }
+  return {
+    ...base,
+    businessValue: ai.businessValue.length ? ai.businessValue : base.businessValue,
+    risks: ai.risks.length ? ai.risks : base.risks,
+    questions: ai.questions.length ? ai.questions : base.questions,
+    governance,
+    governanceExplanation: ai.governanceExplanation || governance.explanation,
+    provenance: { kind: "ai", model: ai.model, generatedAt: ai.generatedAt },
+  };
 }

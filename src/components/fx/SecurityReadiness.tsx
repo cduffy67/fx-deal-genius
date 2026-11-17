@@ -10,6 +10,7 @@ import {
   PlugZap,
   Server,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -27,7 +28,7 @@ const ITEMS: Item[] = [
   {
     icon: Database,
     title: "Data storage",
-    demo: "Lovable Cloud (managed Postgres). Single shared demo table, no tenancy.",
+    demo: "Browser localStorage, per visitor. No shared database in the public demo.",
     production: "Customer-owned database with per-tenant isolation, backups and DR.",
     owner: "Engineering",
   },
@@ -79,6 +80,13 @@ const ITEMS: Item[] = [
     demo: "Lovable-managed multi-tenant edge hosting.",
     production: "Customer-approved VPC, private link or on-prem deployment per InfoSec review.",
     owner: "Customer IT",
+  },
+  {
+    icon: Sparkles,
+    title: "AI model governance",
+    demo: "Lovable AI (Gemini) drafts narrative only. Policy outcome is deterministic; model citations are validated.",
+    production: "Approved model and provider, prompt and output logging, evaluation suite and model risk sign-off.",
+    owner: "Compliance",
   },
   {
     icon: ShieldCheck,

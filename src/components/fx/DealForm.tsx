@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,12 +53,21 @@ const INDUSTRIES = [
 export function DealForm({
   onSubmit,
   loading,
+  prefill,
 }: {
   onSubmit: (v: FormValues) => void;
   loading: boolean;
+  /** Fill the form from outside (example scenarios). Change `key` to re-apply. */
+  prefill?: { key: number; values: FormValues };
 }) {
   const [v, setV] = useState<FormValues>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
+
+  useEffect(() => {
+    if (!prefill) return;
+    setV(prefill.values);
+    setErrors({});
+  }, [prefill?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set<K extends keyof FormValues>(k: K, val: FormValues[K]) {
     setV((p) => ({ ...p, [k]: val }));

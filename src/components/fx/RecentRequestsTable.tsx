@@ -32,12 +32,12 @@ export function RecentRequestsTable({
   deals,
   onSelect,
   onDelete,
-  onClear,
+  onReset,
 }: {
   deals: Deal[];
   onSelect: (d: Deal) => void;
   onDelete: (id: string) => void;
-  onClear: () => void;
+  onReset: () => void;
 }) {
   return (
     <Card className="rounded-md border-border shadow-none">
@@ -45,26 +45,22 @@ export function RecentRequestsTable({
         <div>
           <h3 className="text-sm font-semibold text-foreground">Recent requests</h3>
           <p className="text-xs text-muted-foreground">
-            Stored locally in this browser for the demo session.
+            Saved in your browser only. Other visitors can't see your requests.
           </p>
         </div>
-        {deals.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (confirm("Clear all stored requests?")) onClear();
-            }}
-            className="text-xs text-muted-foreground hover:text-destructive"
-          >
-            Clear all
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReset}
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
+          Reset demo
+        </Button>
       </div>
 
       {deals.length === 0 ? (
         <div className="px-5 py-10 text-center text-xs text-muted-foreground">
-          No requests yet.
+          No requests yet. Try an example above, or use Reset demo to restore the samples.
         </div>
       ) : (
         <div className="overflow-x-auto">

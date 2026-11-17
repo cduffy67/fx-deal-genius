@@ -1,6 +1,16 @@
 import type { Deal } from "./storage";
 import { toEurEquivalent } from "./fx";
 
+/**
+ * Single source of truth for review thresholds (GBP equivalent).
+ * Used by the governance check, the deal status, the recommended next step
+ * and the exports, so they can never disagree.
+ */
+export const REVIEW_THRESHOLDS_GBP = {
+  treasury: 1_000_000, // P1
+  compliance: 5_000_000, // P2
+} as const;
+
 export type PolicyOutcome =
   | "Approved for Indicative Review"
   | "Needs Treasury Review"
@@ -44,14 +54,24 @@ function ruleById(id: string): PolicyRule {
   return NORTON_FX_POLICY.find((r) => r.id === id)!;
 }
 
-// Convert to GBP equivalent via EUR pivot.
-function toGbpEquivalent(amount: number, ccy: Deal["baseCcy"]): number {
-  const eur = toEurEquivalent(amount, ccy);
-  return eur * 0.85; // GBP per EUR (matches fx.ts fallback table)
+/**
+ * GBP equivalent of the deal notional. Uses the deal's own rate when GBP is
+ * one leg of the pair; otherwise crosses via the static EUR pivot table.
+ */
+export function gbpEquivalent(
+  deal: Pick<Deal, "amount" | "baseCcy" | "targetCcy" | "convertedAmount">,
+): number {
+  if (deal.baseCcy === "GBP") return deal.amount;
+  if (deal.targetCcy === "GBP") return deal.convertedAmount;
+  return toEurEquivalent(deal.amount, deal.baseCcy) * 0.85; // GBP per EUR (fx.ts fallback table)
+}
+
+function fmtGbp(n: number): string {
+  return `£${Math.round(n).toLocaleString("en-GB")}`;
 }
 
 export function evaluateGovernance(deal: Deal): GovernanceCheck {
-  const gbp = toGbpEquivalent(deal.amount, deal.baseCcy);
+  const gbp = gbpEquivalent(deal);
   const matched: PolicyRule[] = [];
   const explanations: string[] = [];
 
@@ -63,8 +83,8 @@ export function evaluateGovernance(deal: Deal): GovernanceCheck {
   );
 
   const incompleteContext = !deal.purpose.trim() || !deal.notes.trim();
-  const overCompliance = gbp > 5_000_000;
-  const overTreasury = gbp > 1_000_000;
+  const overCompliance = gbp > REVIEW_THRESHOLDS_GBP.compliance;
+  const overTreasury = gbp > REVIEW_THRESHOLDS_GBP.treasury;
   const enhancedFlag =
     deal.urgency === "High" && deal.relationshipValue === "High";
 
@@ -78,12 +98,12 @@ export function evaluateGovernance(deal: Deal): GovernanceCheck {
     matched.push(ruleById("P1"));
     matched.push(ruleById("P2"));
     explanations.push(
-      `Notional of ~£${Math.round(gbp).toLocaleString("en-GB")} exceeds the £5,000,000 threshold — Treasury Review and Compliance notification are required under P1 and P2.`,
+      `Notional of ~${fmtGbp(gbp)} exceeds the ${fmtGbp(REVIEW_THRESHOLDS_GBP.compliance)} threshold — Treasury Review and Compliance notification are required under P1 and P2.`,
     );
   } else if (overTreasury) {
     matched.push(ruleById("P1"));
     explanations.push(
-      `Notional of ~£${Math.round(gbp).toLocaleString("en-GB")} exceeds the £1,000,000 threshold — Treasury Review is required under P1 before an indicative customer quote can be prepared.`,
+      `Notional of ~${fmtGbp(gbp)} exceeds the ${fmtGbp(REVIEW_THRESHOLDS_GBP.treasury)} threshold — Treasury Review is required under P1 before an indicative customer quote can be prepared.`,
     );
   }
   if (enhancedFlag) {

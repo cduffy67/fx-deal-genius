@@ -5,10 +5,10 @@ import { RateBadge } from "./RateBadge";
 import { StatusBadge } from "./StatusBadge";
 import { formatCurrency, formatRate } from "@/lib/fx";
 import type { Deal } from "@/lib/storage";
-import { analyseDeal } from "@/lib/deal-analysis";
-import { evaluateGovernance, type PolicyOutcome } from "@/lib/governance";
+import { buildPack, type DealPack, type Provenance } from "@/lib/deal-analysis";
+import type { PolicyOutcome } from "@/lib/governance";
 import { buildDealPackText, downloadDealPackPdf } from "@/lib/deal-export";
-import { FileText, ArrowRight, Copy, Download, ShieldCheck } from "lucide-react";
+import { FileText, ArrowRight, Copy, Download, ShieldCheck, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 function fmtTime(iso: string) {
@@ -21,7 +21,15 @@ function fmtTime(iso: string) {
   );
 }
 
-export function DealSummary({ deal }: { deal: Deal | null }) {
+export function DealSummary({
+  deal,
+  onDraftAi,
+  aiLoading = false,
+}: {
+  deal: Deal | null;
+  onDraftAi?: (deal: Deal) => void;
+  aiLoading?: boolean;
+}) {
   if (!deal) {
     return (
       <Card className="flex h-full min-h-[520px] flex-col items-center justify-center rounded-md border-dashed border-border p-10 text-center shadow-none">
@@ -34,7 +42,7 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
     );
   }
 
-  const a = analyseDeal(deal);
+  const a = buildPack(deal);
   const pair = `${deal.baseCcy}/${deal.targetCcy}`;
   const rateLabel =
     deal.rateSource === "frankfurter"
@@ -95,6 +103,8 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
 
       <Separator className="my-5" />
 
+      <AiBar provenance={a.provenance} loading={aiLoading} onDraft={onDraftAi ? () => onDraftAi(deal) : undefined} />
+
       {/* 1 — Deal Summary */}
       <SectionTitle index={1} title="Deal Summary" />
       <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 rounded-md border border-border bg-muted/30 p-4 sm:grid-cols-2">
@@ -130,20 +140,20 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
       <Separator className="my-6" />
 
       {/* 2 — Business value */}
-      <SectionTitle index={2} title="Relationship & Business Value" />
+      <SectionTitle index={2} title="Relationship & Business Value" source={a.provenance} />
       <p className="mt-2 text-sm leading-relaxed text-foreground">{a.summary}</p>
       <BulletList items={a.businessValue} className="mt-3" />
 
       <Separator className="my-6" />
 
       {/* 3 — Risk considerations */}
-      <SectionTitle index={3} title="Risk Considerations" />
+      <SectionTitle index={3} title="Risk Considerations" source={a.provenance} />
       <BulletList items={a.risks} tone="risk" className="mt-3" />
 
       <Separator className="my-6" />
 
       {/* 4 — Recommended next step */}
-      <SectionTitle index={4} title="Recommended Next Step" />
+      <SectionTitle index={4} title="Recommended Next Step" source="engine" />
       <div className="mt-3 flex items-center gap-3 rounded-md border-l-2 border-accent bg-accent/5 px-4 py-3 text-sm font-medium text-foreground">
         <ArrowRight className="h-4 w-4 text-accent" />
         {a.nextStep}
@@ -152,14 +162,14 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
       <Separator className="my-6" />
 
       {/* 5 — Customer questions */}
-      <SectionTitle index={5} title="Customer Questions to Validate" />
+      <SectionTitle index={5} title="Customer Questions to Validate" source={a.provenance} />
       <BulletList items={a.questions} numbered className="mt-3" />
 
       <Separator className="my-6" />
 
       {/* 6 — Governance check */}
-      <SectionTitle index={6} title="Governance Check" />
-      <GovernanceBlock deal={deal} />
+      <SectionTitle index={6} title="Governance Check" source="engine" />
+      <GovernanceBlock pack={a} />
 
       {deal.notes.trim() && (
         <>
@@ -172,7 +182,72 @@ export function DealSummary({ deal }: { deal: Deal | null }) {
   );
 }
 
-function SectionTitle({ index, title }: { index?: number; title: string }) {
+function SourceChip({ source }: { source: Provenance | "engine" }) {
+  if (source === "engine")
+    return (
+      <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+        Policy engine
+      </span>
+    );
+  if (source.kind === "ai")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-sm border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-accent">
+        <Sparkles className="h-2.5 w-2.5" /> AI-drafted
+      </span>
+    );
+  return (
+    <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+      Rule-based
+    </span>
+  );
+}
+
+function AiBar({
+  provenance,
+  loading,
+  onDraft,
+}: {
+  provenance: Provenance;
+  loading: boolean;
+  onDraft?: () => void;
+}) {
+  if (loading)
+    return (
+      <div className="mb-5 flex items-center gap-2 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+        Drafting value, risks and RM questions with AI. Policy outcome is already fixed by the rules engine.
+      </div>
+    );
+  if (provenance.kind === "ai")
+    return (
+      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+        <Sparkles className="h-3.5 w-3.5 text-accent" />
+        Narrative drafted by <span className="font-mono">{provenance.model}</span>. Outcome, thresholds and next step
+        come from the policy engine and cannot be changed by the model.
+      </div>
+    );
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-border px-3 py-2 text-[11px] text-muted-foreground">
+      <span>Rule-based draft. The policy outcome is final; the narrative can be drafted by AI.</span>
+      {onDraft && (
+        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={onDraft}>
+          <Sparkles className="h-3.5 w-3.5" />
+          Draft with AI
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function SectionTitle({
+  index,
+  title,
+  source,
+}: {
+  index?: number;
+  title: string;
+  source?: Provenance | "engine";
+}) {
   return (
     <div className="flex items-center gap-2">
       {index !== undefined && (
@@ -183,6 +258,7 @@ function SectionTitle({ index, title }: { index?: number; title: string }) {
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
         {title}
       </h3>
+      {source && <SourceChip source={source} />}
     </div>
   );
 }
@@ -245,8 +321,8 @@ function outcomeTone(o: PolicyOutcome): { bar: string; chip: string; label: stri
   }
 }
 
-function GovernanceBlock({ deal }: { deal: Deal }) {
-  const g = evaluateGovernance(deal);
+function GovernanceBlock({ pack }: { pack: DealPack }) {
+  const g = pack.governance;
   const tone = outcomeTone(g.outcome);
   return (
     <div className="mt-3 space-y-4">
@@ -276,10 +352,13 @@ function GovernanceBlock({ deal }: { deal: Deal }) {
       </div>
 
       <div>
-        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           Explanation
+          {pack.provenance.kind === "ai" && pack.governanceExplanation !== g.explanation && (
+            <SourceChip source={pack.provenance} />
+          )}
         </div>
-        <p className="mt-1 text-sm leading-relaxed text-foreground">{g.explanation}</p>
+        <p className="mt-1 text-sm leading-relaxed text-foreground">{pack.governanceExplanation}</p>
       </div>
 
       <div>
