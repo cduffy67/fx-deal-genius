@@ -42,11 +42,18 @@ export function parseIntake(raw: Record<string, unknown>): IntakeResult | null {
 
   let sell = ccy(raw.sell_currency);
   let buy = ccy(raw.buy_currency);
+  // When we fill in a missing currency ourselves, our note replaces the model's
+  // vaguer "not specified" note so the RM doesn't see the same point twice.
+  const dropModelNote = (re: RegExp) => {
+    for (let i = gaps.length - 1; i >= 0; i--) if (re.test(gaps[i])) gaps.splice(i, 1);
+  };
   if (!sell && buy) {
     sell = buy === "GBP" ? "EUR" : "GBP";
+    dropModelNote(/\b(sell|selling|sold|pay(ing)? with|source) currenc|\bcurrenc(y|ies) (to|they) (sell|pay)/i);
     gaps.push(`Sell currency not stated, so ${sell} is assumed. Confirm with the customer.`);
   } else if (sell && !buy) {
     buy = sell === "USD" ? "EUR" : "USD";
+    dropModelNote(/\b(buy|buying|receive|target) currenc|\bcurrenc(y|ies) (to|they) (buy|receive)/i);
     gaps.push(`Buy currency not stated, so ${buy} is assumed. Confirm with the customer.`);
   } else if (!sell && !buy) {
     sell = "GBP";
