@@ -10,11 +10,11 @@
 
 Norton Bank is a fictional bank used for the demo.
 
-| 1. Paste a client email | 2. AI fills the ticket and flags gaps |
+| 1. Paste the inbox | 2. A queue ordered by bank policy |
 |---|---|
-| ![Start panel](docs/01-start.jpg) | ![Email intake](docs/02-email-intake.jpg) |
-| **3. Bank policy routes the ticket** | **4. A checked reply to send** |
-| ![Decision pack](docs/03-decision-pack.jpg) | ![Customer reply](docs/04-customer-reply.jpg) |
+| ![Client inbox](docs/01-inbox.jpg) | ![Queue and ticket](docs/02-queue.jpg) |
+| **3. A reply that asks for what's missing** | |
+| ![Reply to send](docs/03-reply.jpg) | |
 
 ---
 
