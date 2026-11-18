@@ -60,7 +60,7 @@ export function templateReply(deal: Deal, g: GovernanceCheck = evaluateGovernanc
     default:
       body = `We're happy to proceed and will share an indicative ${pair} level shortly. Please note any level we share is indicative until confirmed at execution.`;
   }
-  return `Hi ${deal.customerName},\n\n${opening} ${body}\n\nKind regards,\nNorton Bank FX Desk`;
+  return `Hi ${deal.customerName || "there"},\n\n${opening} ${body}\n\nKind regards,\nNorton Bank FX Desk`;
 }
 
 type Tier = "small" | "mid" | "large" | "strategic";

@@ -82,7 +82,9 @@ export function evaluateGovernance(deal: Deal): GovernanceCheck {
     "ECB / Frankfurter rates are indicative only — any customer-executable quote must come from a Norton Bank-approved market data provider (Bloomberg, Refinitiv or OANDA).",
   );
 
-  const incompleteContext = !deal.purpose.trim() || !deal.notes.trim();
+  // P5: missing purpose, notes, client name or amount (e.g. an email that never says how much).
+  const incompleteContext =
+    !deal.purpose.trim() || !deal.notes.trim() || !deal.customerName.trim() || !(deal.amount > 0);
   const overCompliance = gbp > REVIEW_THRESHOLDS_GBP.compliance;
   const overTreasury = gbp > REVIEW_THRESHOLDS_GBP.treasury;
   const enhancedFlag =
@@ -91,7 +93,7 @@ export function evaluateGovernance(deal: Deal): GovernanceCheck {
   if (incompleteContext) {
     matched.push(ruleById("P5"));
     explanations.push(
-      "Customer purpose or notes are missing — under P5 this request must be returned to the Relationship Manager for clarification before progressing.",
+      "Key details (client, amount, purpose or notes) are missing — under P5 this request must be returned to the Relationship Manager for clarification before progressing.",
     );
   }
   if (overCompliance) {

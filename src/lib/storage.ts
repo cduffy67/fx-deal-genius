@@ -1,5 +1,4 @@
 import type { Currency } from "./fx";
-import { buildSeedDeals } from "./scenarios";
 
 export type Urgency = "Low" | "Medium" | "High";
 export type RelationshipValue = "Low" | "Medium" | "High";
@@ -35,6 +34,10 @@ export type Deal = {
   rateFetchedAt: string;
   rateSource: "frankfurter" | "demo-fallback" | "identity";
   ai?: AiAnalysis;
+  /** Set when the ticket was created from a client email. */
+  sourceEmail?: string;
+  /** What the email didn't say, or what was assumed when reading it. */
+  intakeGaps?: string[];
 };
 
 /*
@@ -42,7 +45,7 @@ export type Deal = {
  * (localStorage). Nothing is shared between visitors, so nobody can see,
  * spam or wipe anyone else's data. First visit is seeded with sample deals.
  */
-const STORAGE_KEY = "norton-fx-deals-v2";
+const STORAGE_KEY = "norton-fx-tickets-v3";
 const MAX_DEALS = 100;
 
 function read(): Deal[] | null {
@@ -81,11 +84,8 @@ export async function saveDeals(deals: Deal[]): Promise<void> {
 }
 
 export async function fetchDeals(): Promise<Deal[]> {
-  const existing = read();
-  if (existing) return existing;
-  const seeded = buildSeedDeals();
-  write(seeded);
-  return seeded;
+  // Inbox model: the queue starts empty; visitors triage the sample inbox.
+  return read() ?? [];
 }
 
 export async function insertDeal(d: Omit<Deal, "id" | "createdAt">): Promise<Deal> {
@@ -103,9 +103,8 @@ export async function deleteDeal(id: string): Promise<void> {
   write((read() ?? []).filter((d) => d.id !== id));
 }
 
-/** Restore the sample deals (only affects this visitor's browser). */
+/** Clear this visitor's queue (only affects their browser). */
 export async function resetDemo(): Promise<Deal[]> {
-  const seeded = buildSeedDeals();
-  write(seeded);
-  return seeded;
+  write([]);
+  return [];
 }
